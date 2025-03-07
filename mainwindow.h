@@ -15,6 +15,7 @@
 #include <QTextEdit>
 #include <QGridLayout>
 #include <QApplication>
+#include "chatdbhandler.h"
 
 // Structure to store chat request information
 struct ChatRequest {
@@ -106,5 +107,8 @@ private:
     void setupLoginPage();
     void setupRegisterPage();
     void setupMainMenuPage();
+
+    // Add the database handler
+    ChatDatabaseHandler dbHandler;
 };
 #endif // MAINWINDOW_H
