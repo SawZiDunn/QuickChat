@@ -4,7 +4,7 @@
 #include <QPalette>
 
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent)
+    : QMainWindow(parent), dbHandler(this)
 {
     // Apply dark theme
     applyDarkTheme();
@@ -38,6 +38,11 @@ MainWindow::MainWindow(QWidget *parent)
 
     // Add some mock group chats
     groupChats << "General Discussion" << "Qt Developers" << "Beginners Help";
+
+    // Initialize the database
+    if (!dbHandler.initialize()) {
+        QMessageBox::critical(this, "Database Error", "Failed to initialize the database connection.");
+    }
 }
 
 void MainWindow::applyDarkTheme()
@@ -533,7 +538,7 @@ void MainWindow::showMainMenu()
 
 void MainWindow::performLogin()
 {
-    QString email = loginEmailField->text();
+    QString email = loginEmailField->text(); // Consider renaming this field
     QString password = loginPasswordField->text();
 
     if (email.isEmpty() || password.isEmpty()) {
@@ -541,8 +546,8 @@ void MainWindow::performLogin()
         return;
     }
 
-    if (users.contains(email) && users[email].second == password) {
-        currentUser = users[email].first;
+    if (dbHandler.loginUser(email, password)) {
+        currentUser = email;
         QMessageBox::information(this, "Login Successful",
                                  "Welcome back, " + currentUser + "!");
         showMainMenu();
@@ -564,20 +569,17 @@ void MainWindow::performRegistration()
         return;
     }
 
-    if (users.contains(email)) {
+    // Register user in the database
+    if (dbHandler.registerUser(username, email, password)) {
+        // You might want to save the email as well - see suggestion below
+        QMessageBox::information(this, "Registration Successful",
+                                 "Account created successfully! You can now login.");
+        // Switch to login page
+        stackedWidget->setCurrentWidget(loginPage);
+    } else {
         QMessageBox::warning(this, "Registration Error",
-                             "Email already registered. Please use a different email.");
-        return;
+                             "Username already exists or database error occurred.");
     }
-
-    // Add new user
-    users.insert(email, qMakePair(username, password));
-
-    QMessageBox::information(this, "Registration Successful",
-                             "Account created successfully! You can now login.");
-
-    // Switch to login page
-    stackedWidget->setCurrentWidget(loginPage);
 }
 
 void MainWindow::startPrivateChat()
