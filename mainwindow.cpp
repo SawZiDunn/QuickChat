@@ -1,4 +1,8 @@
 #include "mainwindow.h"
+#include "menuwidget.h"
+#include "privatechatwidget.h"
+#include "groupchatwidget.h"
+
 #include <QInputDialog>
 #include <QStyleFactory>
 #include <QPalette>
@@ -10,7 +14,7 @@ MainWindow::MainWindow(QWidget *parent)
     applyDarkTheme();
 
     // Set up the main window
-    setWindowTitle("Qt Chat Application");
+    setWindowTitle("QuickChat");
     resize(800, 600);
 
     // Create stacked widget to manage different pages
@@ -21,16 +25,24 @@ MainWindow::MainWindow(QWidget *parent)
     setupWelcomePage();
     setupLoginPage();
     setupRegisterPage();
-    setupMainMenuPage();
-    setupPrivateChatPage();
+
+    menuWidget = new MenuWidget(stackedWidget);
+    PrivateChatWidget *privateChatWidget = new PrivateChatWidget();
+    GroupChatWidget *groupChatWidget = new GroupChatWidget();
+
+
+    stackedWidget->addWidget(menuWidget);
+    stackedWidget->addWidget(privateChatWidget);
+    stackedWidget->addWidget(groupChatWidget);
+
 
     // Start with welcome page
     stackedWidget->setCurrentWidget(welcomePage);
 
-    // Initialize chat request timer
-    requestCheckTimer = new QTimer(this);
-    connect(requestCheckTimer, &QTimer::timeout, this, &MainWindow::checkPendingRequests);
-    requestCheckTimer->start(5000); // Check every 5 seconds
+    // // Initialize chat request timer
+    // requestCheckTimer = new QTimer(this);
+    // connect(requestCheckTimer, &QTimer::timeout, this, &MainWindow::checkPendingRequests);
+    // requestCheckTimer->start(5000); // Check every 5 seconds
 
     // Add some mock users for testing
     users.insert("user1@gmail.com", qMakePair(QString("User1"), QString("123")));
@@ -348,173 +360,7 @@ void MainWindow::setupRegisterPage()
     stackedWidget->addWidget(registerPage);
 }
 
-void MainWindow::setupMainMenuPage()
-{
-    mainMenuPage = new QWidget();
 
-    // Create layout
-    QVBoxLayout *layout = new QVBoxLayout(mainMenuPage);
-
-    // Add title
-    QLabel *titleLabel = new QLabel("Main Menu");
-    QFont titleFont = titleLabel->font();
-    titleFont.setPointSize(20);
-    titleFont.setBold(true);
-    titleLabel->setFont(titleFont);
-    titleLabel->setAlignment(Qt::AlignCenter);
-
-    // Welcome message
-    QLabel *welcomeLabel = new QLabel();
-    welcomeLabel->setAlignment(Qt::AlignCenter);
-    QFont welcomeFont = welcomeLabel->font();
-    welcomeFont.setPointSize(12);
-    welcomeLabel->setFont(welcomeFont);
-    welcomeLabel->setText("Welcome to Qt Chat Application");
-
-    // Create card widget containers
-    QWidget *cardContainer = new QWidget();
-    QGridLayout *cardLayout = new QGridLayout(cardContainer);
-    cardLayout->setSpacing(15);
-
-    // Define button styles
-    QString cardButtonStyle = "QPushButton {"
-                              "  background-color: #3a3a3a;"
-                              "  border-radius: 8px;"
-                              "  padding: 15px;"
-                              "  text-align: center;"
-                              "  color: white;"
-                              "}"
-                              "QPushButton:hover {"
-                              "  background-color: #4a4a4a;"
-                              "}"
-                              "QPushButton:pressed {"
-                              "  background-color: #2a82da;"
-                              "}";
-
-    // Create buttons
-    startPrivateChatButton = new QPushButton("Start Private Chat");
-    viewGroupChatsButton = new QPushButton("View Group Chats");
-    createGroupChatButton = new QPushButton("Create Group Chat");
-    joinGroupChatButton = new QPushButton("Join Group Chat");
-
-    // Style card buttons
-    startPrivateChatButton->setStyleSheet(cardButtonStyle);
-    viewGroupChatsButton->setStyleSheet(cardButtonStyle);
-    createGroupChatButton->setStyleSheet(cardButtonStyle);
-    joinGroupChatButton->setStyleSheet(cardButtonStyle);
-
-    startPrivateChatButton->setFixedSize(200, 120);
-    viewGroupChatsButton->setFixedSize(200, 120);
-    createGroupChatButton->setFixedSize(200, 120);
-    joinGroupChatButton->setFixedSize(200, 120);
-
-    // Create logout button
-    logoutButton = new QPushButton("Logout");
-    logoutButton->setFixedWidth(120);
-
-    // Connect buttons
-    connect(startPrivateChatButton, &QPushButton::clicked, this, &MainWindow::startPrivateChat);
-    connect(viewGroupChatsButton, &QPushButton::clicked, this, &MainWindow::viewGroupChats);
-    connect(createGroupChatButton, &QPushButton::clicked, this, &MainWindow::createGroupChat);
-    connect(joinGroupChatButton, &QPushButton::clicked, this, &MainWindow::joinGroupChat);
-    connect(logoutButton, &QPushButton::clicked, this, [this]() {
-        currentUser = "";
-        stackedWidget->setCurrentWidget(welcomePage);
-    });
-
-    // Add buttons to card layout
-    cardLayout->addWidget(startPrivateChatButton, 0, 0);
-    cardLayout->addWidget(viewGroupChatsButton, 0, 1);
-    cardLayout->addWidget(createGroupChatButton, 1, 0);
-    cardLayout->addWidget(joinGroupChatButton, 1, 1);
-
-    // Add widgets to layout
-    layout->addSpacing(20);
-    layout->addWidget(titleLabel);
-    layout->addWidget(welcomeLabel);
-    layout->addSpacing(30);
-    layout->addWidget(cardContainer, 0, Qt::AlignCenter);
-    layout->addSpacing(20);
-    layout->addWidget(logoutButton, 0, Qt::AlignCenter);
-    layout->addStretch();
-
-    // Add page to stacked widget
-    stackedWidget->addWidget(mainMenuPage);
-}
-
-void MainWindow::setupPrivateChatPage()
-{
-    privateChatPage = new QWidget();
-
-    // Create layout
-    QVBoxLayout *layout = new QVBoxLayout(privateChatPage);
-
-    // Create header
-    QWidget *headerWidget = new QWidget();
-    QHBoxLayout *headerLayout = new QHBoxLayout(headerWidget);
-
-    QLabel *chatPartnerLabel = new QLabel("Chat with: ");
-    chatPartnerLabel->setFont(QFont("Arial", 12, QFont::Bold));
-
-    QLabel *partnerNameLabel = new QLabel();
-    partnerNameLabel->setFont(QFont("Arial", 12));
-
-    leaveChatButton = new QPushButton("Leave Chat");
-    leaveChatButton->setFixedWidth(100);
-
-    headerLayout->addWidget(chatPartnerLabel);
-    headerLayout->addWidget(partnerNameLabel);
-    headerLayout->addStretch();
-    headerLayout->addWidget(leaveChatButton);
-
-    // Create chat display
-    chatHistoryDisplay = new QTextEdit();
-    chatHistoryDisplay->setReadOnly(true);
-    chatHistoryDisplay->setStyleSheet("background-color: #232323; border: 1px solid #3a3a3a; border-radius: 5px;");
-
-    // Create message input area
-    QWidget *messageWidget = new QWidget();
-    QHBoxLayout *messageLayout = new QHBoxLayout(messageWidget);
-
-    messageInputField = new QLineEdit();
-    messageInputField->setPlaceholderText("Type your message here...");
-    messageInputField->setStyleSheet("padding: 8px;");
-
-    sendMessageButton = new QPushButton("Send");
-    sendMessageButton->setFixedWidth(80);
-
-    messageLayout->addWidget(messageInputField);
-    messageLayout->addWidget(sendMessageButton);
-
-    // Add widgets to main layout
-    layout->addWidget(headerWidget);
-    layout->addWidget(chatHistoryDisplay);
-    layout->addWidget(messageWidget);
-
-    // Connect signals
-    connect(leaveChatButton, &QPushButton::clicked, this, [this]() {
-        stackedWidget->setCurrentWidget(mainMenuPage);
-    });
-
-    connect(sendMessageButton, &QPushButton::clicked, this, [this]() {
-        if (!messageInputField->text().isEmpty()) {
-            // Add sent message to chat history
-            chatHistoryDisplay->append("<span style='color:#42a5f5;'><b>You:</b></span> " + messageInputField->text());
-
-            // Clear input field
-            messageInputField->clear();
-
-            // Simulate reply (for demo purposes)
-            QTimer::singleShot(1000, this, [this]() {
-                chatHistoryDisplay->append("<span style='color:#66bb6a;'><b>" + currentChatPartner +
-                                           ":</b></span> This is a simulated response.");
-            });
-        }
-    });
-
-    // Add page to stacked widget
-    stackedWidget->addWidget(privateChatPage);
-}
 
 void MainWindow::showLoginForm()
 {
@@ -529,11 +375,6 @@ void MainWindow::showRegisterForm()
     registerEmailField->clear();
     registerPasswordField->clear();
     stackedWidget->setCurrentWidget(registerPage);
-}
-
-void MainWindow::showMainMenu()
-{
-    stackedWidget->setCurrentWidget(mainMenuPage);
 }
 
 void MainWindow::performLogin()
@@ -555,6 +396,10 @@ void MainWindow::performLogin()
         QMessageBox::warning(this, "Login Error",
                              "Invalid email or password. Please try again.");
     }
+}
+
+void MainWindow::showMainMenu() {
+    stackedWidget->setCurrentWidget(menuWidget);
 }
 
 void MainWindow::performRegistration()
@@ -580,120 +425,4 @@ void MainWindow::performRegistration()
         QMessageBox::warning(this, "Registration Error",
                              "Username already exists or database error occurred.");
     }
-}
-
-void MainWindow::startPrivateChat()
-{
-    // For demonstration, we'll simulate choosing a user
-    QStringList userList;
-    for (auto it = users.begin(); it != users.end(); ++it) {
-        if (it.value().first != currentUser) {
-            userList.append(it.value().first);
-        }
-    }
-
-    if (userList.isEmpty()) {
-        QMessageBox::information(this, "No Users",
-                                 "There are no other users available for chat.");
-        return;
-    }
-
-    bool ok;
-    QString selectedUser = QInputDialog::getItem(this, "Start Private Chat",
-                                                 "Select a user to chat with:",
-                                                 userList, 0, false, &ok);
-
-    if (ok && !selectedUser.isEmpty()) {
-        // Set current chat partner
-        currentChatPartner = selectedUser;
-
-        // Clear chat history
-        chatHistoryDisplay->clear();
-
-        // Add welcome message
-        chatHistoryDisplay->append("<center><span style='color:#9e9e9e;'>--- Starting chat with " +
-                                   selectedUser + " ---</span></center>");
-
-        // Switch to private chat page
-        stackedWidget->setCurrentWidget(privateChatPage);
-    }
-}
-
-void MainWindow::viewGroupChats()
-{
-    if (groupChats.isEmpty()) {
-        QMessageBox::information(this, "No Group Chats",
-                                 "There are no group chats available at the moment.");
-        return;
-    }
-
-    QString chatList = "Available Group Chats:\n\n";
-    for (const QString &chat : groupChats) {
-        chatList += "- " + chat + "\n";
-    }
-
-    QMessageBox::information(this, "Group Chats", chatList);
-}
-
-void MainWindow::createGroupChat()
-{
-    bool ok;
-    QString chatName = QInputDialog::getText(this, "Create Group Chat",
-                                             "Enter a name for the new group chat:",
-                                             QLineEdit::Normal, "", &ok);
-
-    if (ok && !chatName.isEmpty()) {
-        if (groupChats.contains(chatName)) {
-            QMessageBox::warning(this, "Create Group Chat",
-                                 "A group chat with this name already exists.");
-        } else {
-            groupChats.append(chatName);
-            QMessageBox::information(this, "Group Chat Created",
-                                     "The group chat '" + chatName + "' has been created successfully.");
-        }
-    }
-}
-
-void MainWindow::joinGroupChat()
-{
-    if (groupChats.isEmpty()) {
-        QMessageBox::information(this, "No Group Chats",
-                                 "There are no group chats available to join.");
-        return;
-    }
-
-    bool ok;
-    QString selectedChat = QInputDialog::getItem(this, "Join Group Chat",
-                                                 "Select a group chat to join:",
-                                                 groupChats, 0, false, &ok);
-
-    if (ok && !selectedChat.isEmpty()) {
-        QMessageBox::information(this, "Group Chat Joined",
-                                 "You have joined the group chat '" + selectedChat + "'.");
-    }
-}
-
-void MainWindow::checkPendingRequests()
-{
-    // This method will be implemented when we add private chat functionality
-}
-
-void MainWindow::sendChatRequest(const QString &toUser)
-{
-    // This method will be implemented when we add private chat functionality
-}
-
-void MainWindow::acceptChatRequest(const ChatRequest &request)
-{
-    // This method will be implemented when we add private chat functionality
-}
-
-void MainWindow::rejectChatRequest(const ChatRequest &request)
-{
-    // This method will be implemented when we add private chat functionality
-}
-
-void MainWindow::openPrivateChat(const QString &otherUser)
-{
-    // This method will be implemented when we add private chat functionality
 }
