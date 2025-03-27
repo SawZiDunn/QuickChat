@@ -71,22 +71,26 @@ bool ChatDatabaseHandler::checkTableExists(const QString &tableName)
     return false;
 }
 
-bool ChatDatabaseHandler::loginUser(const QString &email, const QString &password)
+QString ChatDatabaseHandler::loginUser(const QString &email, const QString &password)
 {
     if (!dbInitialized) {
-        qDebug("hello");
-        return false;
+        qDebug() << "Database not initialized";
+        return QString(); // Return empty string on failure
     }
 
     QSqlQuery query(db);
-    query.prepare("SELECT id FROM users WHERE email = :email AND password = :password");
+    query.prepare("SELECT name FROM users WHERE email = :email AND password = :password");
     query.bindValue(":email", email);
     query.bindValue(":password", password); // In real app, use hashed passwords
 
     if (query.exec() && query.next()) {
-        return true; // User exists with matching password
+        QString userName = query.value(0).toString();
+        qDebug() << "Login successful for user:" << userName;
+        return userName;
     }
-    return false;
+
+    qDebug() << "Login failed for email:" << email;
+    return QString(); // Return empty string if login fails
 }
 
 bool ChatDatabaseHandler::registerUser(const QString &username, const QString &email, const QString &password)
@@ -129,6 +133,42 @@ QStringList ChatDatabaseHandler::getAllUsers() const
     return users;
 }
 
+bool ChatDatabaseHandler::userExists(const QString & email) {
+    if (!dbInitialized) {
+        return false;
+    }
+
+    QSqlQuery query(db);
+    query.prepare("SELECT id FROM users WHERE email = :email");
+    query.bindValue(":email", email);
+
+
+    if (query.exec() && query.next()) {
+        return true; // User exists with matching password
+    }
+    return false;
+
+}
+
+QString ChatDatabaseHandler::groupChatExists(const QString & chatId) {
+    if (!dbInitialized) {
+        return QString();
+    }
+
+
+    QSqlQuery query(db);
+    query.prepare("SELECT name FROM chat_groups WHERE id = :chatId");
+    query.bindValue(":chatId", chatId);
+
+
+    if (query.exec() && query.next()) {
+
+        return query.value(0).toString(); // Group exists
+    }
+    return QString();
+
+}
+
 QStringList ChatDatabaseHandler::getUsersExcept(const QString &username) const
 {
     QStringList users;
@@ -168,31 +208,66 @@ QStringList ChatDatabaseHandler::getGroupChats() const
     return groups;
 }
 
-bool ChatDatabaseHandler::createGroupChat(const QString &name)
+int ChatDatabaseHandler::createGroupChat(const QString &name, const QString &creatorEmail)
 {
     if (!dbInitialized) {
-        return false;
+        return -1; // Return -1 to indicate failure
     }
+
+
+    // First, find the user ID for the given email
+    QSqlQuery userQuery(db);
+    userQuery.prepare("SELECT id FROM users WHERE email = :creatorEmail");
+
+    userQuery.bindValue(":creatorEmail", creatorEmail);
+
+
+    if (!userQuery.exec() || !userQuery.next()) {
+        qDebug() << creatorEmail;
+        return -1; // No user found with this email
+    }
+
+    int creatorId = userQuery.value(0).toInt();
+    qDebug() << creatorId;
 
     // Check if group already exists
     QSqlQuery checkQuery(db);
     checkQuery.prepare("SELECT id FROM chat_groups WHERE name = :name");
     checkQuery.bindValue(":name", name);
-
     if (checkQuery.exec() && checkQuery.next()) {
-        return false; // Group already exists
+        return checkQuery.value(0).toInt(); // Return existing group ID
     }
 
     // Create new group
     QSqlQuery insertQuery(db);
-    insertQuery.prepare("INSERT INTO chat_groups (name, created_at) VALUES (:name, :created_at)");
+    insertQuery.prepare("INSERT INTO chat_groups (name, created_at, created_by) VALUES (:name, :created_at, :created_by)");
     insertQuery.bindValue(":name", name);
     insertQuery.bindValue(":created_at", QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss"));
+    insertQuery.bindValue(":created_by", creatorId);
 
-    return insertQuery.exec();
+    if (!insertQuery.exec()) {
+        return -1; // Return -1 if insertion fails
+    }
+
+    // Get the ID of the newly created group
+    int newGroupId = insertQuery.lastInsertId().toInt();
+
+    // Automatically add the creator to the group
+    QSqlQuery addCreatorQuery(db);
+    addCreatorQuery.prepare("INSERT INTO user_chat_groups (user_id, chatgroup_id) VALUES (:user_id, :chatgroup_id)");
+    addCreatorQuery.bindValue(":user_id", creatorId);
+    addCreatorQuery.bindValue(":chatgroup_id", newGroupId);
+
+    if (!addCreatorQuery.exec()) {
+        // Optionally, you might want to delete the group if adding the creator fails
+        return -1;
+    }
+
+    return newGroupId;
 }
 
-bool ChatDatabaseHandler::joinGroupChat(const QString &username, const QString &groupName)
+
+bool ChatDatabaseHandler::joinGroupChat(const QString &userEmail, const QString &groupId)
 {
     if (!dbInitialized) {
         return false;
@@ -200,8 +275,8 @@ bool ChatDatabaseHandler::joinGroupChat(const QString &username, const QString &
 
     // Get user ID
     QSqlQuery userQuery(db);
-    userQuery.prepare("SELECT id FROM users WHERE name = :name");
-    userQuery.bindValue(":name", username);
+    userQuery.prepare("SELECT id FROM users WHERE email = :email");
+    userQuery.bindValue(":email", userEmail);
 
     if (!userQuery.exec() || !userQuery.next()) {
         return false; // User not found
@@ -210,15 +285,13 @@ bool ChatDatabaseHandler::joinGroupChat(const QString &username, const QString &
     int userId = userQuery.value(0).toInt();
 
     // Get group ID
-    QSqlQuery groupQuery(db);
-    groupQuery.prepare("SELECT id FROM chat_groups WHERE name = :name");
-    groupQuery.bindValue(":name", groupName);
+    // QSqlQuery groupQuery(db);
+    // groupQuery.prepare("SELECT id FROM chat_groups WHERE id = :groupId");
+    // groupQuery.bindValue(":groupId", group);
 
-    if (!groupQuery.exec() || !groupQuery.next()) {
-        return false; // Group not found
-    }
-
-    int groupId = groupQuery.value(0).toInt();
+    // if (!groupQuery.exec() || !groupQuery.next()) {
+    //     return false; // Group not found
+    // }
 
     // Check if user is already in the group
     QSqlQuery checkQuery(db);
@@ -239,7 +312,7 @@ bool ChatDatabaseHandler::joinGroupChat(const QString &username, const QString &
     return joinQuery.exec();
 }
 
-QStringList ChatDatabaseHandler::getUserGroups(const QString &username) const
+QStringList ChatDatabaseHandler::getUserGroups(const QString &userEmail) const
 {
     QStringList groups;
 
@@ -251,9 +324,9 @@ QStringList ChatDatabaseHandler::getUserGroups(const QString &username) const
     query.prepare("SELECT g.name FROM chat_groups g "
                   "JOIN user_chat_groups ug ON g.id = ug.chatgroup_id "
                   "JOIN users u ON u.id = ug.user_id "
-                  "WHERE u.name = :username "
+                  "WHERE u.email = :userEmail "
                   "ORDER BY g.name");
-    query.bindValue(":username", username);
+    query.bindValue(":userEmail", userEmail);
 
     if (query.exec()) {
         while (query.next()) {

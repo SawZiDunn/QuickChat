@@ -16,13 +16,10 @@
 #include <QGridLayout>
 #include <QApplication>
 #include "chatdbhandler.h"
+#include "menuwidget.h"
+#include "privatechatwidget.h"
+#include "groupchatwidget.h"
 
-// Structure to store chat request information
-struct ChatRequest {
-    QString fromUser;
-    QString toUser;
-    bool pending;
-};
 
 class MainWindow : public QMainWindow
 {
@@ -37,10 +34,6 @@ private slots:
     void showMainMenu();
     void performLogin();
     void performRegistration();
-    void createGroupChat();
-    void joinGroupChat();
-    void startPrivateChat();
-    void viewGroupChats();
 
 private:
     // Apply dark theme
@@ -70,37 +63,11 @@ private:
     QPushButton *registerBackButton;
 
     // Main menu page widgets
-    QWidget *mainMenuPage;
-    QPushButton *createGroupChatButton;
-    QPushButton *joinGroupChatButton;
-    QPushButton *viewGroupChatsButton;
-    QPushButton *startPrivateChatButton;
-    QPushButton *logoutButton;
+    MenuWidget *menuWidget;
 
-    // Chat request management
-    QList<ChatRequest> chatRequests;
-    QTimer *requestCheckTimer;
-    void setupPrivateChatPage();
-    void checkPendingRequests();
-    void sendChatRequest(const QString &toUser);
-    void acceptChatRequest(const ChatRequest &request);
-    void rejectChatRequest(const ChatRequest &request);
-    void openPrivateChat(const QString &otherUser);
-
-    // Private chat UI elements
-    QWidget *privateChatPage;
-    QTextEdit *chatHistoryDisplay;
-    QLineEdit *messageInputField;
-    QPushButton *sendMessageButton;
-    QPushButton *leaveChatButton;
-    QString currentChatPartner;
-
-    // Mock database
-    QMap<QString, QPair<QString, QString>> users; // email -> (username, password)
-    QStringList groupChats;
-
-    // Currently logged in user
-    QString currentUser;
+    // chat widgets
+    PrivateChatWidget *privateChatWidget;
+    GroupChatWidget *groupChatWidget;
 
     // Helper methods
     void setupWelcomePage();
@@ -110,5 +77,6 @@ private:
 
     // Add the database handler
     ChatDatabaseHandler dbHandler;
+    QPair<QString, QString> currentUser;
 };
 #endif // MAINWINDOW_H

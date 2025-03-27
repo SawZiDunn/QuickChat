@@ -26,16 +26,18 @@ public:
     bool isInitialized() const;
 
     // User operations
-    bool loginUser(const QString &username, const QString &password);
+    QString loginUser(const QString &email, const QString &password);
     bool registerUser(const QString &username, const QString &email, const QString &password);
     QStringList getAllUsers() const;
     QStringList getUsersExcept(const QString &username) const;
 
     // Chat group operations
     QStringList getGroupChats() const;
-    bool createGroupChat(const QString &name);
-    bool joinGroupChat(const QString &username, const QString &groupName);
-    QStringList getUserGroups(const QString &username) const;
+    int createGroupChat(const QString &name, const QString &creatorEmail);
+    bool joinGroupChat(const QString &userEmail, const QString &groupId);
+    QStringList getUserGroups(const QString &userEmail) const;
+    bool userExists(const QString & email);
+    QString groupChatExists(const QString & chatId);
 
     // Message operations
     bool sendDirectMessage(const QString &sender, const QString &recipient,
