@@ -8,6 +8,8 @@
 MenuWidget::MenuWidget(QStackedWidget *stackedWidget, QWidget *parent)
     : QWidget(parent), stackedWidget(stackedWidget)
 {
+
+
     setupUI();
 }
 
@@ -15,6 +17,8 @@ void MenuWidget::setupUI()
 {
     // Create layout
     QVBoxLayout *layout = new QVBoxLayout(this);
+
+
 
     // Add title
     titleLabel = new QLabel("Main Menu");
@@ -102,103 +106,132 @@ void MenuWidget::setupUI()
     layout->addSpacing(20);
     layout->addWidget(logoutButton, 0, Qt::AlignCenter);
     layout->addStretch();
-}
 
-void MenuWidget::setUsername(const QString &username)
-{
-    welcomeLabel->setText("Welcome, " + username);
-}
-
-void MenuWidget::startPrivateChat()
-{
-    // Get access to users map (you'll need to add this as a member variable or pass it as a parameter)
-    if (users.isEmpty() || users.size() <= 1) {
-        QMessageBox::information(this, "No Users",
-                                 "There are no other users available for chat.");
-        return;
+    // Initialize the database
+    if (!dbHandler.initialize()) {
+        QMessageBox::critical(this, "Database Error", "Failed to initialize the database connection.");
     }
+}
 
-    // For demonstration, we'll simulate choosing a user
-    QStringList userList;
-    for (auto it = users.begin(); it != users.end(); ++it) {
-        if (it.value().first != currentUser) {
-            userList.append(it.value().first);
+// void MenuWidget::setUsername(const QString &username)
+// {
+//     welcomeLabel->setText("Welcome, " + username);
+// }
+
+void MenuWidget::startPrivateChat() {
+    // Show email input dialog
+    bool ok;
+    QString userEmail = QInputDialog::getText(this, "Start Private Chat",
+                                              "Enter user's email address:",
+                                              QLineEdit::Normal, "", &ok);
+
+    if (ok && !userEmail.isEmpty()) {
+        // Check if user exists in database
+        if (dbHandler.userExists(userEmail)) {
+            // User exists, emit signal to open private chat
+            emit privateChatSelected(userEmail);
+        } else {
+            QMessageBox::warning(this, "User Not Found",
+                                 "No user with this email address was found.");
         }
     }
-
-    if (userList.isEmpty()) {
-        QMessageBox::information(this, "No Users",
-                                 "There are no other users available for chat.");
-        return;
-    }
-
-    bool ok;
-    QString selectedUser = QInputDialog::getItem(this, "Start Private Chat",
-                                                 "Select a user to chat with:",
-                                                 userList, 0, false, &ok);
-
-    if (ok && !selectedUser.isEmpty()) {
-        // Emit signal with selected user
-        emit privateChatSelected(selectedUser);
-    }
 }
 
-void MenuWidget::viewGroupChats()
-{
-    if (groupChats.isEmpty()) {
+
+void MenuWidget::viewGroupChats() {
+    // Get group chats that the current user has created or joined
+    QStringList userGroupChats = dbHandler.getUserGroups("bob@gmail.com"); // currentUser
+
+
+
+    if (userGroupChats.isEmpty()) {
         QMessageBox::information(this, "No Group Chats",
-                                 "There are no group chats available at the moment.");
+                                 "You haven't created or joined any group chats yet.");
         return;
     }
 
-    QString chatList = "Available Group Chats:\n\n";
-    for (const QString &chat : groupChats) {
+    QString chatList = "Your Group Chats:\n\n";
+    for (const QString &chat : userGroupChats) {
         chatList += "- " + chat + "\n";
     }
 
     QMessageBox::information(this, "Group Chats", chatList);
 }
 
-void MenuWidget::createGroupChat()
-{
+void MenuWidget::createGroupChat() {
     bool ok;
     QString chatName = QInputDialog::getText(this, "Create Group Chat",
                                              "Enter a name for the new group chat:",
                                              QLineEdit::Normal, "", &ok);
 
     if (ok && !chatName.isEmpty()) {
-        if (groupChats.contains(chatName)) {
-            QMessageBox::warning(this, "Create Group Chat",
-                                 "A group chat with this name already exists.");
-        } else {
-            groupChats.append(chatName);
+        // Call dbHandler to create the group chat, which returns an integer ID
+
+        int chatId = dbHandler.createGroupChat(chatName, currentUser.second);
+
+        if (chatId > 0) {
+            // Successfully created, convert the int ID to string for display
+            QString chatIdStr = QString::number(chatId);
+
             QMessageBox::information(this, "Group Chat Created",
-                                     "The group chat '" + chatName + "' has been created successfully.");
+                                     "The group chat '" + chatName + "' has been created successfully.\n" +
+                                         "Group Chat ID: " + chatIdStr);
+
+            // Optionally join the group chat immediately using the integer ID
+            emit groupChatJoined(chatName);
+        } else {
+            QMessageBox::warning(this, "Create Group Chat",
+                                 "Failed to create group chat. Please try again.");
         }
     }
 }
 
-void MenuWidget::joinGroupChat()
-{
-    if (groupChats.isEmpty()) {
-        QMessageBox::information(this, "No Group Chats",
-                                 "There are no group chats available to join.");
-        return;
-    }
-
+void MenuWidget::joinGroupChat() {
     bool ok;
-    QString selectedChat = QInputDialog::getItem(this, "Join Group Chat",
-                                                 "Select a group chat to join:",
-                                                 groupChats, 0, false, &ok);
+    QString chatId = QInputDialog::getText(this, "Join Group Chat",
+                                             "Enter the group chat name:",
+                                             QLineEdit::Normal, "", &ok);
+    if (ok && !chatId.isEmpty()) {
+        // Check if the group chat exists
+        QString chatName = dbHandler.groupChatExists(chatId);
+        qDebug() << chatName;
+        if (!chatName.isEmpty()) {
+            // Add user to group chat in database
+            if (dbHandler.joinGroupChat(currentUser.second, chatId)) {
 
-    if (ok && !selectedChat.isEmpty()) {
-        QMessageBox::information(this, "Group Chat Joined",
-                                 "You have joined the group chat '" + selectedChat + "'.");
-        emit groupChatJoined(selectedChat);
+                // Create and set up the GroupChatWidget
+                GroupChatWidget* groupChatWidget = new GroupChatWidget(this);
+                groupChatWidget->setGroupName(chatName);
+
+                // // Get the list of members for this group
+                // QStringList members = dbHandler.getGroupChatMembers(chatName);
+                // groupChatWidget->setMembersList(members);
+
+                // Add a system message about the user joining
+                QString systemMessage = QString("%1 has joined the group chat.").arg(currentUser.first);
+                groupChatWidget->addSystemMessage(systemMessage);
+
+                // Emit signal to indicate group chat is ready
+                emit groupChatJoined(chatName);
+
+                // Switch to the GroupChatWidget in the stacked widget
+                stackedWidget->addWidget(groupChatWidget);
+                stackedWidget->setCurrentWidget(groupChatWidget);
+
+                QMessageBox::information(this, "Group Chat Joined",
+                                         "You have joined the group chat successfully.");
+            } else {
+                QMessageBox::warning(this, "Join Group Chat",
+                                     "Failed to join group chat. You might already be a member.");
+            }
+        } else {
+            QMessageBox::warning(this, "Group Chat Not Found",
+                                 "No group chat with this name was found.");
+        }
     }
 }
 
 void MenuWidget::logoutRequested() {
-    currentUser = "";
+    currentUser = qMakePair("", "");
     stackedWidget->setCurrentWidget(stackedWidget->widget(0)); // welcomePage is in index 0 of stackedWidget
 }

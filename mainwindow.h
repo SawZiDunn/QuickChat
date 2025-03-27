@@ -77,5 +77,6 @@ private:
 
     // Add the database handler
     ChatDatabaseHandler dbHandler;
+    QPair<QString, QString> currentUser;
 };
 #endif // MAINWINDOW_H

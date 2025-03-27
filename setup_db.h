@@ -51,7 +51,9 @@ int setup_chat_db()
         "CREATE TABLE IF NOT EXISTS chat_groups ("
         "id INTEGER PRIMARY KEY AUTOINCREMENT, "
         "name TEXT NOT NULL UNIQUE, "
-        "created_at DATETIME NOT NULL"
+        "created_at DATETIME NOT NULL, "
+        "created_by INTEGER, "
+        "FOREIGN KEY (created_by) REFERENCES users (id)"
         ");";
     executeSQL(db, createChatGroupsTable);
 
@@ -99,11 +101,15 @@ int setup_chat_db()
     // Current timestamp for chat group creation
     QString currentTime = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
 
-    // Populate ChatGroups table
     QStringList demoChatGroups = {
-        QString("INSERT INTO chat_groups (name, created_at) VALUES ('General', '%1');").arg(currentTime),
-        QString("INSERT INTO chat_groups (name, created_at) VALUES ('Tech Talk', '%1');").arg(currentTime),
-        QString("INSERT INTO chat_groups (name, created_at) VALUES ('Coffee Break', '%1');").arg(currentTime)
+        // 'General' group created by Alice (user_id 1)
+        QString("INSERT INTO chat_groups (name, created_at, created_by) VALUES ('General', '%1', 1);").arg(currentTime),
+
+        // 'Tech Talk' group created by Alice (user_id 1)
+        QString("INSERT INTO chat_groups (name, created_at, created_by) VALUES ('Tech Talk', '%1', 1);").arg(currentTime),
+
+        // 'Coffee Break' group created by Bob (user_id 2)
+        QString("INSERT INTO chat_groups (name, created_at, created_by) VALUES ('Coffee Break', '%1', 2);").arg(currentTime)
     };
 
     for (const QString &sql : demoChatGroups) {

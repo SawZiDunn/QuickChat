@@ -44,12 +44,7 @@ MainWindow::MainWindow(QWidget *parent)
     // connect(requestCheckTimer, &QTimer::timeout, this, &MainWindow::checkPendingRequests);
     // requestCheckTimer->start(5000); // Check every 5 seconds
 
-    // Add some mock users for testing
-    users.insert("user1@gmail.com", qMakePair(QString("User1"), QString("123")));
-    users.insert("user2@gmail.com", qMakePair(QString("User2"), QString("123")));
 
-    // Add some mock group chats
-    groupChats << "General Discussion" << "Qt Developers" << "Beginners Help";
 
     // Initialize the database
     if (!dbHandler.initialize()) {
@@ -379,7 +374,7 @@ void MainWindow::showRegisterForm()
 
 void MainWindow::performLogin()
 {
-    QString email = loginEmailField->text(); // Consider renaming this field
+    QString email = loginEmailField->text();
     QString password = loginPasswordField->text();
 
     if (email.isEmpty() || password.isEmpty()) {
@@ -387,10 +382,12 @@ void MainWindow::performLogin()
         return;
     }
 
-    if (dbHandler.loginUser(email, password)) {
-        currentUser = email;
+    QString currentUserName = dbHandler.loginUser(email, password);
+
+    if (!currentUserName.isEmpty()) {
+        currentUser = qMakePair(currentUserName, email); // Store the current user pair
         QMessageBox::information(this, "Login Successful",
-                                 "Welcome back, " + currentUser + "!");
+                                 "Welcome back, " + currentUser.first + "!");
         showMainMenu();
     } else {
         QMessageBox::warning(this, "Login Error",
@@ -399,6 +396,7 @@ void MainWindow::performLogin()
 }
 
 void MainWindow::showMainMenu() {
+    menuWidget->setCurrentUser(currentUser.first, currentUser.second);
     stackedWidget->setCurrentWidget(menuWidget);
 }
 

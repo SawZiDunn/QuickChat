@@ -41,10 +41,6 @@ private:
     QTextEdit *chatHistoryDisplay;
     QLineEdit *messageInputField;
     QPushButton *sendMessageButton;
-
-    // Private chat UI elements
-    QWidget *privateChatPage;
-    QPushButton *leaveChatButton;
 };
 
 #endif // PRIVATECHATWIDGET_H

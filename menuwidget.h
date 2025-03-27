@@ -13,6 +13,9 @@
 #include <QPair>
 #include <QStringList>
 
+#include "chatdbhandler.h"
+#include "groupchatwidget.h"
+
 
 // Structure to store chat request information
 struct ChatRequest {
@@ -28,9 +31,9 @@ public:
     MenuWidget(QStackedWidget *stackedWidget, QWidget *parent = nullptr);
     ~MenuWidget() = default;
 
-    void setUsername(const QString &username);
+    // void setUsername(const QString &username);
     void setUsers(const QMap<QString, QPair<QString, QString>> &userMap) { users = userMap; }
-    void setCurrentUser(const QString &user) { currentUser = user; }
+    void setCurrentUser(const QString &username, const QString &email) { currentUser = qMakePair(username, email); }
     void setGroupChats(const QStringList &chats) { groupChats = chats; }
 
     // Chat action methods
@@ -77,15 +80,8 @@ private:
     // Data members
     QStackedWidget *stackedWidget;
     QMap<QString, QPair<QString, QString>> users; // Map of email -> (username, password)
-    QString currentUser;
+    QPair<QString, QString> currentUser; // Currently logged in user
     QStringList groupChats;
-
-    // Mock database
-    QMap<QString, QPair<QString, QString>> users; // email -> (username, password)
-    QStringList groupChats;
-
-    // Currently logged in user
-    QString currentUser;
 
     // Add the database handler
     ChatDatabaseHandler dbHandler;
