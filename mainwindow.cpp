@@ -27,9 +27,11 @@ MainWindow::MainWindow(QWidget *parent)
     setupRegisterPage();
 
     menuWidget = new MenuWidget(stackedWidget);
-    PrivateChatWidget *privateChatWidget = new PrivateChatWidget();
+    privateChatWidget = new PrivateChatWidget();
     GroupChatWidget *groupChatWidget = new GroupChatWidget();
 
+    // Connect menu widget signals
+    connect(menuWidget, &MenuWidget::privateChatSelected, this, &MainWindow::showPrivateChat);
 
     stackedWidget->addWidget(menuWidget);
     stackedWidget->addWidget(privateChatWidget);
@@ -423,4 +425,17 @@ void MainWindow::performRegistration()
         QMessageBox::warning(this, "Registration Error",
                              "Username already exists or database error occurred.");
     }
+}
+
+void MainWindow::showPrivateChat(const QString &partnerEmail)
+{
+    // Set the partner's email in private chat widget
+    privateChatWidget->setChatPartner("Chat Partner", partnerEmail);
+    privateChatWidget->setUserEmail(currentUser.second); // Add this line
+
+    // Switch to private chat widget
+    stackedWidget->setCurrentWidget(privateChatWidget);
+
+    // Connect the leave chat signal
+    connect(privateChatWidget, &PrivateChatWidget::leaveChatRequested, this, &MainWindow::showMainMenu, Qt::UniqueConnection);
 }
