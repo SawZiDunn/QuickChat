@@ -34,6 +34,7 @@ private slots:
     void showMainMenu();
     void performLogin();
     void performRegistration();
+    void showPrivateChat(const QString &partnerEmail);
 
 private:
     // Apply dark theme
