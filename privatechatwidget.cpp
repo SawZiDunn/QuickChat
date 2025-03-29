@@ -1,10 +1,11 @@
 #include "privatechatwidget.h"
 #include <QDateTime>
 
-PrivateChatWidget::PrivateChatWidget(QWidget *parent)
-    : QWidget(parent)
+PrivateChatWidget::PrivateChatWidget(const QString &currentUserEmail, const QString &recipientEmail, QWidget *parent)
+    : QWidget(parent), userEmail(currentUserEmail), recipientEmail(recipientEmail)
 {
     setupUI();
+    loadChatHistory();
 }
 
 void PrivateChatWidget::setupUI()
@@ -137,7 +138,7 @@ void PrivateChatWidget::setupUI()
     layout->addWidget(messageWidget);
 
     // Connect signals
-    connect(leaveChatButton, &QPushButton::clicked, this, &PrivateChatWidget::leaveChatRequested);
+    connect(leaveChatButton, &QPushButton::clicked, this, &PrivateChatWidget::backToMenuRequested);
     connect(sendMessageButton, &QPushButton::clicked, this, &PrivateChatWidget::sendMessage);
     connect(messageInputField, &QLineEdit::returnPressed, this, &PrivateChatWidget::sendMessage);
     connect(chatHistoryDisplay->verticalScrollBar(), &QScrollBar::rangeChanged, this, &PrivateChatWidget::scrollToBottom);
@@ -222,6 +223,19 @@ void PrivateChatWidget::sendMessage()
         addOutgoingMessage(message);
         messageInputField->clear();
     }
+}
+
+
+void PrivateChatWidget::loadChatHistory()
+{
+    // Get chat history
+    QList<std::tuple<QString, QString, QDateTime>> messages =
+        dbHandler.getDirectMessageHistory(userEmail, recipientEmail, 50);
+
+    // // Display messages in UI
+    // for (const auto &message : messages) {
+    //     chatHistoryDisplay(std::get<0>(message), std::get<1>(message), std::get<2>(message));
+    // }
 }
 
 void PrivateChatWidget::scrollToBottom()

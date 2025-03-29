@@ -169,44 +169,8 @@ QString ChatDatabaseHandler::groupChatExists(const QString & chatId) {
 
 }
 
-QStringList ChatDatabaseHandler::getUsersExcept(const QString &username) const
-{
-    QStringList users;
 
-    if (!dbInitialized) {
-        return users;
-    }
 
-    QSqlQuery query(db);
-    query.prepare("SELECT name FROM users WHERE name != :username ORDER BY name");
-    query.bindValue(":username", username);
-
-    if (query.exec()) {
-        while (query.next()) {
-            users << query.value(0).toString();
-        }
-    }
-
-    return users;
-}
-
-QStringList ChatDatabaseHandler::getGroupChats() const
-{
-    QStringList groups;
-
-    if (!dbInitialized) {
-        return groups;
-    }
-
-    QSqlQuery query(db);
-    if (query.exec("SELECT name FROM chat_groups ORDER BY name")) {
-        while (query.next()) {
-            groups << query.value(0).toString();
-        }
-    }
-
-    return groups;
-}
 
 int ChatDatabaseHandler::createGroupChat(const QString &name, const QString &creatorEmail)
 {
@@ -337,6 +301,32 @@ QStringList ChatDatabaseHandler::getUserGroups(const QString &userEmail) const
     return groups;
 }
 
+QStringList ChatDatabaseHandler::getGroupChatMembers(const QString &chatName) {
+    QStringList members;
+    if (!dbInitialized) {
+        return members;
+    }
+
+    QSqlQuery query(db);
+    query.prepare("SELECT u.name FROM users u "
+                  "JOIN user_chat_groups ug ON u.id = ug.user_id "
+                  "JOIN chat_groups cg ON ug.chatgroup_id = cg.id "
+                  "WHERE cg.name = :chatName "
+                  "ORDER BY u.name");
+    query.bindValue(":chatName", chatName);
+
+    if (query.exec()) {
+        while (query.next()) {
+            members << query.value(0).toString();
+
+        }
+    } else {
+        qDebug() << "Error fetching group members:" << query.lastError().text();
+    }
+
+    return members;
+}
+
 bool ChatDatabaseHandler::sendDirectMessage(const QString &sender, const QString &recipient, const QString &content)
 {
     if (!dbInitialized || content.isEmpty()) {
@@ -417,16 +407,16 @@ bool ChatDatabaseHandler::sendGroupMessage(const QString &sender, const QString 
     return messageQuery.exec();
 }
 
-QList<QPair<QString, QString>> ChatDatabaseHandler::getDirectMessageHistory(const QString &user1, const QString &user2, int limit)
+// Using std::tuple
+QList<std::tuple<QString, QString, QDateTime>> ChatDatabaseHandler::getDirectMessageHistory(const QString &user1, const QString &user2, int limit)
 {
-    QList<QPair<QString, QString>> messages;
-
+    QList<std::tuple<QString, QString, QDateTime>> messages;
     if (!dbInitialized) {
         return messages;
     }
 
     QSqlQuery query(db);
-    query.prepare("SELECT u.name, m.content FROM messages m "
+    query.prepare("SELECT u.name, m.content, m.timestamp FROM messages m "
                   "JOIN users u ON m.sender_id = u.id "
                   "WHERE (m.sender_id = (SELECT id FROM users WHERE name = :user1) AND "
                   "       m.recipient_id = (SELECT id FROM users WHERE name = :user2)) OR "
@@ -441,38 +431,49 @@ QList<QPair<QString, QString>> ChatDatabaseHandler::getDirectMessageHistory(cons
         while (query.next()) {
             QString sender = query.value(0).toString();
             QString content = query.value(1).toString();
-            messages.append(qMakePair(sender, content));
-        }
+            QDateTime timestamp = query.value(2).toDateTime();
 
+            // Create a tuple of sender, content, and timestamp
+            messages.append(std::make_tuple(sender, content, timestamp));
+        }
         // Reverse to get chronological order
         std::reverse(messages.begin(), messages.end());
+    } else {
+        qDebug() << "Query failed:" << query.lastError().text();
     }
 
     return messages;
 }
 
-QList<QPair<QString, QString>> ChatDatabaseHandler::getGroupMessageHistory(const QString &groupName, int limit)
+
+QList<std::tuple<QString, QString, QDateTime>> ChatDatabaseHandler::getGroupMessageHistory(const QString &groupName, int limit)
 {
-    QList<QPair<QString, QString>> messages;
+    QList<std::tuple<QString, QString, QDateTime>> messages;
     if (!dbInitialized) {
         return messages;
     }
+
     QSqlQuery query(db);
-    query.prepare("SELECT u.name, m.content FROM messages m "
+    query.prepare("SELECT u.name, m.content, m.timestamp FROM messages m "
                   "JOIN users u ON m.sender_id = u.id "
                   "JOIN chat_groups g ON m.chatgroup_id = g.id "
                   "WHERE g.name = :group_name "
                   "ORDER BY m.timestamp DESC LIMIT :limit");
     query.bindValue(":group_name", groupName);
     query.bindValue(":limit", limit);
+
     if (query.exec()) {
         while (query.next()) {
             QString sender = query.value(0).toString();
             QString content = query.value(1).toString();
-            messages.append(qMakePair(sender, content));
+            QDateTime timestamp = query.value(2).toDateTime();
+
+            messages.append(std::make_tuple(sender, content, timestamp));
         }
-        // Reverse to get chronological order
+        // Reverse the list to maintain chronological order
         std::reverse(messages.begin(), messages.end());
     }
     return messages;
 }
+
+

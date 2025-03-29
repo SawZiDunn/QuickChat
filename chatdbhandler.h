@@ -12,6 +12,7 @@
 #include <QPair>
 #include <QDateTime>
 #include <QDebug>
+#include <tuple>
 
 class ChatDatabaseHandler : public QObject
 {
@@ -29,26 +30,23 @@ public:
     QString loginUser(const QString &email, const QString &password);
     bool registerUser(const QString &username, const QString &email, const QString &password);
     QStringList getAllUsers() const;
-    QStringList getUsersExcept(const QString &username) const;
 
     // Chat group operations
-    QStringList getGroupChats() const;
     int createGroupChat(const QString &name, const QString &creatorEmail);
     bool joinGroupChat(const QString &userEmail, const QString &groupId);
     QStringList getUserGroups(const QString &userEmail) const;
     bool userExists(const QString & email);
     QString groupChatExists(const QString & chatId);
+    QStringList getGroupChatMembers(const QString &chatName);
 
     // Message operations
     bool sendDirectMessage(const QString &sender, const QString &recipient,
                            const QString &content);
     bool sendGroupMessage(const QString &sender, const QString &groupName,
                           const QString &content);
-    QList<QPair<QString, QString>> getDirectMessageHistory(const QString &user1,
-                                                           const QString &user2,
-                                                           int limit = 50);
-    QList<QPair<QString, QString>> getGroupMessageHistory(const QString &groupName,
-                                                          int limit = 50);
+    // content and datetime
+    QList<std::tuple<QString, QString, QDateTime>> getDirectMessageHistory(const QString &user1, const QString &user2, int limit);
+    QList<std::tuple<QString, QString, QDateTime>> getGroupMessageHistory(const QString &groupName, int limit);
 
 private:
     QSqlDatabase db;

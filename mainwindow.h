@@ -17,8 +17,6 @@
 #include <QApplication>
 #include "chatdbhandler.h"
 #include "menuwidget.h"
-#include "privatechatwidget.h"
-#include "groupchatwidget.h"
 
 
 class MainWindow : public QMainWindow
@@ -34,7 +32,6 @@ private slots:
     void showMainMenu();
     void performLogin();
     void performRegistration();
-    void showPrivateChat(const QString &partnerEmail);
 
 private:
     // Apply dark theme
@@ -65,10 +62,6 @@ private:
 
     // Main menu page widgets
     MenuWidget *menuWidget;
-
-    // chat widgets
-    PrivateChatWidget *privateChatWidget;
-    GroupChatWidget *groupChatWidget;
 
     // Helper methods
     void setupWelcomePage();
