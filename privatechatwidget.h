@@ -19,7 +19,7 @@ class PrivateChatWidget : public QWidget
     Q_OBJECT
 
 public:
-    PrivateChatWidget(const QString &currentUserEmail, const QString &recipientEmail, QWidget *parent=nullptr);
+    PrivateChatWidget(const QString &currentUserEmail, const QString &recipientEmail, ChatDatabaseHandler &dbHandler, QWidget *parent=nullptr);
     ~PrivateChatWidget() = default;
 
     void setChatPartner(const QString &partnerName, const QString &partnerEmail);
@@ -51,12 +51,10 @@ private:
     QLineEdit *messageInputField;
     QPushButton *sendMessageButton;
 
-
     // User data
     QString userEmail;
     QString recipientEmail;
-
-    ChatDatabaseHandler dbHandler;
+    ChatDatabaseHandler &dbHandler;
 };
 
 #endif // PRIVATECHATWIDGET_H
