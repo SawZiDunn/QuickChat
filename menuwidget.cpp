@@ -113,29 +113,37 @@ void MenuWidget::setupUI()
     }
 }
 
-// void MenuWidget::setUsername(const QString &username)
-// {
-//     welcomeLabel->setText("Welcome, " + username);
-// }
-
 void MenuWidget::startPrivateChat() {
-    // Show email input dialog
     bool ok;
     QString userEmail = QInputDialog::getText(this, "Start Private Chat",
                                               "Enter user's email address:",
                                               QLineEdit::Normal, "", &ok);
 
     if (ok && !userEmail.isEmpty()) {
-        // Check if user exists in database
         if (dbHandler.userExists(userEmail)) {
-            // User exists, emit signal to open private chat
-            emit privateChatSelected(userEmail);
+            // Just create the widget and pass necessary information
+            PrivateChatWidget* privateChatWidget = new PrivateChatWidget(currentUser.second, userEmail, this);
+
+            // Connect the back button signal
+            connect(privateChatWidget, &PrivateChatWidget::backToMenuRequested, this, [this, privateChatWidget]() {
+                // Switch back to menu widget
+                stackedWidget->setCurrentWidget(this);
+
+                // Optional: Remove the chat widget to free up resources
+                // This should be done after a delay or in a safe way to prevent crashes
+                privateChatWidget->deleteLater();
+            });
+
+            stackedWidget->addWidget(privateChatWidget);
+            stackedWidget->setCurrentWidget(privateChatWidget);
+
         } else {
             QMessageBox::warning(this, "User Not Found",
                                  "No user with this email address was found.");
         }
     }
 }
+
 
 
 void MenuWidget::viewGroupChats() {
@@ -177,8 +185,6 @@ void MenuWidget::createGroupChat() {
                                      "The group chat '" + chatName + "' has been created successfully.\n" +
                                          "Group Chat ID: " + chatIdStr);
 
-            // Optionally join the group chat immediately using the integer ID
-            emit groupChatJoined(chatName);
         } else {
             QMessageBox::warning(this, "Create Group Chat",
                                  "Failed to create group chat. Please try again.");
@@ -203,16 +209,19 @@ void MenuWidget::joinGroupChat() {
                 GroupChatWidget* groupChatWidget = new GroupChatWidget(this);
                 groupChatWidget->setGroupName(chatName);
 
-                // // Get the list of members for this group
-                // QStringList members = dbHandler.getGroupChatMembers(chatName);
-                // groupChatWidget->setMembersList(members);
+                // Get the list of members for this group
+                QStringList members = dbHandler.getGroupChatMembers(chatName);
+                groupChatWidget->setMembersList(members);
+
+                QList<std::tuple<QString, QString, QDateTime>> messages = dbHandler.getGroupMessageHistory(chatName, 50);
+                groupChatWidget->loadChatHistory(messages);
 
                 // Add a system message about the user joining
                 QString systemMessage = QString("%1 has joined the group chat.").arg(currentUser.first);
                 groupChatWidget->addSystemMessage(systemMessage);
 
-                // Emit signal to indicate group chat is ready
-                emit groupChatJoined(chatName);
+                // // Emit signal to indicate group chat is ready
+                // emit groupChatJoined(chatName);
 
                 // Switch to the GroupChatWidget in the stacked widget
                 stackedWidget->addWidget(groupChatWidget);

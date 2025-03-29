@@ -27,25 +27,12 @@ MainWindow::MainWindow(QWidget *parent)
     setupRegisterPage();
 
     menuWidget = new MenuWidget(stackedWidget);
-    privateChatWidget = new PrivateChatWidget();
-    GroupChatWidget *groupChatWidget = new GroupChatWidget();
-
-    // Connect menu widget signals
-    connect(menuWidget, &MenuWidget::privateChatSelected, this, &MainWindow::showPrivateChat);
 
     stackedWidget->addWidget(menuWidget);
-    stackedWidget->addWidget(privateChatWidget);
-    stackedWidget->addWidget(groupChatWidget);
 
 
     // Start with welcome page
     stackedWidget->setCurrentWidget(welcomePage);
-
-    // // Initialize chat request timer
-    // requestCheckTimer = new QTimer(this);
-    // connect(requestCheckTimer, &QTimer::timeout, this, &MainWindow::checkPendingRequests);
-    // requestCheckTimer->start(5000); // Check every 5 seconds
-
 
 
     // Initialize the database
@@ -425,17 +412,4 @@ void MainWindow::performRegistration()
         QMessageBox::warning(this, "Registration Error",
                              "Username already exists or database error occurred.");
     }
-}
-
-void MainWindow::showPrivateChat(const QString &partnerEmail)
-{
-    // Set the partner's email in private chat widget
-    privateChatWidget->setChatPartner("Chat Partner", partnerEmail);
-    privateChatWidget->setUserEmail(currentUser.second); // Add this line
-
-    // Switch to private chat widget
-    stackedWidget->setCurrentWidget(privateChatWidget);
-
-    // Connect the leave chat signal
-    connect(privateChatWidget, &PrivateChatWidget::leaveChatRequested, this, &MainWindow::showMainMenu, Qt::UniqueConnection);
 }

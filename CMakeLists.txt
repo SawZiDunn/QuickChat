@@ -17,8 +17,8 @@ qt_add_executable(QuickChat
     mainwindow.ui
     setup_db.h
     chatdbhandler.h chatdbhandler.cpp
-    server.h server.cpp
-    client.h client.cpp
+
+
     privatechatwidget.h privatechatwidget.cpp
     groupchatwidget.h groupchatwidget.cpp
     menuwidget.h menuwidget.cpp

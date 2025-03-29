@@ -11,13 +11,15 @@
 #include <QTimer>
 #include <QScrollBar>
 #include <QDateTime>
+#include <tuple>
+#include "chatdbhandler.h"
 
 class PrivateChatWidget : public QWidget
 {
     Q_OBJECT
 
 public:
-    PrivateChatWidget(QWidget *parent = nullptr);
+    PrivateChatWidget(const QString &currentUserEmail, const QString &recipientEmail, QWidget *parent=nullptr);
     ~PrivateChatWidget() = default;
 
     void setChatPartner(const QString &partnerName, const QString &partnerEmail);
@@ -26,9 +28,10 @@ public:
     void addSystemMessage(const QString &message);
     void addIncomingMessage(const QString &sender, const QString &email, const QString &message);
     void addOutgoingMessage(const QString &message);
+    void loadChatHistory();
 
 signals:
-    void leaveChatRequested();
+    void backToMenuRequested();
     void messageSubmitted(const QString &message);
 
 private slots:
@@ -48,8 +51,12 @@ private:
     QLineEdit *messageInputField;
     QPushButton *sendMessageButton;
 
+
     // User data
     QString userEmail;
+    QString recipientEmail;
+
+    ChatDatabaseHandler dbHandler;
 };
 
 #endif // PRIVATECHATWIDGET_H

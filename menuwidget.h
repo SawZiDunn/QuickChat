@@ -15,6 +15,7 @@
 
 #include "chatdbhandler.h"
 #include "groupchatwidget.h"
+#include "privatechatwidget.h"
 
 
 // Structure to store chat request information
@@ -48,11 +49,6 @@ signals:
     void viewGroupChatsRequested();
     void createGroupChatRequested();
     void joinGroupChatRequested();
-
-
-    // New signals for communication with MainWindow
-    void privateChatSelected(const QString &username);
-    void groupChatJoined(const QString &chatName);
 
 private:
     void setupUI();
