@@ -15,7 +15,11 @@
 #include <QSqlQuery>
 #include <QSqlError>
 #include <QDateTime>
+#include <QScrollBar>
+#include <QMenu>
 #include <tuple>
+#include <QWidgetAction>
+
 
 #include "chatdbhandler.h"
 
@@ -24,7 +28,7 @@ class GroupChatWidget : public QWidget
     Q_OBJECT
 
 public:
-    explicit GroupChatWidget(QWidget *parent = nullptr);
+    explicit GroupChatWidget(ChatDatabaseHandler &dbHandler, QString groupName, QWidget *parent = nullptr);
 
     void setGroupName(const QString &name);
     QString getGroupName() const;
@@ -32,7 +36,7 @@ public:
     void addMember(const QString &username);
     void removeMember(const QString &username);
     void clearChatHistory();
-    void loadChatHistory(QList<std::tuple<QString, QString, QDateTime>> messages);
+    void loadChatHistory();
     void addSystemMessage(const QString &message);
     void addMessage(const QString &sender, const QString &message);
 
@@ -43,21 +47,27 @@ signals:
 
 private slots:
     void sendMessage();
+    void showMembersMenu();
 
 private:
     void setupUI();
     void addHistoryMessage(const QString &sender, const QString &message, const QDateTime &timestamp);
+    void setupConnections();
 
     QLabel *groupNameLabel;
     QPushButton *backButton;
     QPushButton *leaveChatButton;
+    QPushButton *membersButton;
+    QMenu *membersMenu;
+
     QTextEdit *chatHistoryDisplay;
     QLineEdit *messageInputField;
     QPushButton *sendMessageButton;
     QListWidget *membersListWidget;
+
     QString currentGroupName;
 
-    ChatDatabaseHandler dbHandler;
+    ChatDatabaseHandler &dbHandler;
 };
 
 #endif // GROUPCHATWIDGET_H
