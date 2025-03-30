@@ -115,13 +115,13 @@ void MenuWidget::setupUI()
 void MenuWidget::startPrivateChat() {
     bool ok;
     QString userEmail = QInputDialog::getText(this, "Start Private Chat",
-                                              "Enter user's email address:",
-                                              QLineEdit::Normal, "", &ok);
+                                           "Enter user's email address:",
+                                           QLineEdit::Normal, "", &ok);
 
     if (ok && !userEmail.isEmpty()) {
         if (dbHandler.userExists(userEmail)) {
-            // Just create the widget and pass necessary information
-            PrivateChatWidget* privateChatWidget = new PrivateChatWidget(currentUser.second, userEmail, this);
+            // Pass the database handler reference
+            PrivateChatWidget* privateChatWidget = new PrivateChatWidget(currentUser.second, userEmail, dbHandler, this);
 
             // Connect the back button signal
             connect(privateChatWidget, &PrivateChatWidget::backToMenuRequested, this, [this, privateChatWidget]() {
@@ -138,7 +138,7 @@ void MenuWidget::startPrivateChat() {
 
         } else {
             QMessageBox::warning(this, "User Not Found",
-                                 "No user with this email address was found.");
+                              "No user with this email address was found.");
         }
     }
 }

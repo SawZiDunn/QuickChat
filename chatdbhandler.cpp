@@ -416,12 +416,12 @@ QList<std::tuple<QString, QString, QDateTime>> ChatDatabaseHandler::getDirectMes
     }
 
     QSqlQuery query(db);
-    query.prepare("SELECT u.name, m.content, m.timestamp FROM messages m "
+    query.prepare("SELECT u.email, m.content, m.timestamp FROM messages m "
                   "JOIN users u ON m.sender_id = u.id "
-                  "WHERE (m.sender_id = (SELECT id FROM users WHERE name = :user1) AND "
-                  "       m.recipient_id = (SELECT id FROM users WHERE name = :user2)) OR "
-                  "      (m.sender_id = (SELECT id FROM users WHERE name = :user2) AND "
-                  "       m.recipient_id = (SELECT id FROM users WHERE name = :user1)) "
+                  "WHERE (m.sender_id = (SELECT id FROM users WHERE email = :user1) AND "
+                  "       m.recipient_id = (SELECT id FROM users WHERE email = :user2)) OR "
+                  "      (m.sender_id = (SELECT id FROM users WHERE email = :user2) AND "
+                  "       m.recipient_id = (SELECT id FROM users WHERE email = :user1)) "
                   "ORDER BY m.timestamp DESC LIMIT :limit");
     query.bindValue(":user1", user1);
     query.bindValue(":user2", user2);
@@ -432,14 +432,15 @@ QList<std::tuple<QString, QString, QDateTime>> ChatDatabaseHandler::getDirectMes
             QString sender = query.value(0).toString();
             QString content = query.value(1).toString();
             QDateTime timestamp = query.value(2).toDateTime();
-
-            // Create a tuple of sender, content, and timestamp
+            
+            qDebug() << "Found message:" << sender << content << timestamp; // Debug line
             messages.append(std::make_tuple(sender, content, timestamp));
         }
         // Reverse to get chronological order
         std::reverse(messages.begin(), messages.end());
     } else {
         qDebug() << "Query failed:" << query.lastError().text();
+        qDebug() << "Query string:" << query.lastQuery(); // Debug line
     }
 
     return messages;
@@ -475,5 +476,3 @@ QList<std::tuple<QString, QString, QDateTime>> ChatDatabaseHandler::getGroupMess
     }
     return messages;
 }
-
-

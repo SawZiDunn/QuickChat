@@ -1,8 +1,8 @@
 #include "privatechatwidget.h"
 #include <QDateTime>
 
-PrivateChatWidget::PrivateChatWidget(const QString &currentUserEmail, const QString &recipientEmail, QWidget *parent)
-    : QWidget(parent), userEmail(currentUserEmail), recipientEmail(recipientEmail)
+PrivateChatWidget::PrivateChatWidget(const QString &currentUserEmail, const QString &recipientEmail, ChatDatabaseHandler &dbHandler, QWidget *parent)
+    : QWidget(parent), userEmail(currentUserEmail), recipientEmail(recipientEmail), dbHandler(dbHandler)
 {
     setupUI();
     loadChatHistory();
@@ -180,7 +180,7 @@ void PrivateChatWidget::addIncomingMessage(const QString &sender, const QString 
 {
     QString timestamp = formatTimestamp(QDateTime::currentDateTime());
     chatHistoryDisplay->append(QString("<div style='margin: 16px 0; max-width: 70%; clear: both;'>"
-                                       "<div style='float: left; background-color: #383838; padding: 8px 12px; border-radius: 12px; border-bottom-left-radius: 4px;'>"
+                                       "<div style='float: left; background-color: transparent; padding: 8px 12px; border-radius: 12px; border-bottom-left-radius: 4px;'>"
                                        "<div style='margin-bottom: 4px;'>"
                                        "<span style='color:#81c784; font-weight: bold; font-size: 13px;'>%1</span><br>"
                                        "<span style='color:#9e9e9e; font-size: 11px;'>%2</span>"
@@ -225,17 +225,30 @@ void PrivateChatWidget::sendMessage()
     }
 }
 
-
 void PrivateChatWidget::loadChatHistory()
 {
+    // Clear existing chat history
+    chatHistoryDisplay->clear();
+
     // Get chat history
     QList<std::tuple<QString, QString, QDateTime>> messages =
         dbHandler.getDirectMessageHistory(userEmail, recipientEmail, 50);
 
-    // // Display messages in UI
-    // for (const auto &message : messages) {
-    //     chatHistoryDisplay(std::get<0>(message), std::get<1>(message), std::get<2>(message));
-    // }
+    // Display messages in UI
+    for (const auto &message : messages) {
+        const QString &sender = std::get<0>(message);
+        const QString &content = std::get<1>(message);
+        const QDateTime &timestamp = std::get<2>(message);
+
+        if (sender == userEmail) {
+            addOutgoingMessage(content);
+        } else {
+            addIncomingMessage(sender, recipientEmail, content);
+        }
+    }
+
+    // Scroll to bottom to show latest messages
+    scrollToBottom();
 }
 
 void PrivateChatWidget::scrollToBottom()
