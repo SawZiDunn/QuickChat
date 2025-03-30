@@ -79,6 +79,8 @@ private:
     QPair<QString, QString> currentUser; // Currently logged in user
     QStringList groupChats;
 
+    GroupChatWidget *groupChat;
+
     // Add the database handler
     ChatDatabaseHandler dbHandler;
 };

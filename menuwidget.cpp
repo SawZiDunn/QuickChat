@@ -9,7 +9,6 @@ MenuWidget::MenuWidget(QStackedWidget *stackedWidget, QWidget *parent)
     : QWidget(parent), stackedWidget(stackedWidget)
 {
 
-
     setupUI();
 }
 
@@ -148,9 +147,7 @@ void MenuWidget::startPrivateChat() {
 
 void MenuWidget::viewGroupChats() {
     // Get group chats that the current user has created or joined
-    QStringList userGroupChats = dbHandler.getUserGroups("bob@gmail.com"); // currentUser
-
-
+    QStringList userGroupChats = dbHandler.getUserGroups(currentUser.second); // currentUser
 
     if (userGroupChats.isEmpty()) {
         QMessageBox::information(this, "No Group Chats",
@@ -206,22 +203,23 @@ void MenuWidget::joinGroupChat() {
             if (dbHandler.joinGroupChat(currentUser.second, chatId)) {
 
                 // Create and set up the GroupChatWidget
-                GroupChatWidget* groupChatWidget = new GroupChatWidget(this);
+                GroupChatWidget* groupChatWidget = new GroupChatWidget(dbHandler, chatName, this);
                 groupChatWidget->setGroupName(chatName);
-
-                // Get the list of members for this group
-                QStringList members = dbHandler.getGroupChatMembers(chatName);
-                groupChatWidget->setMembersList(members);
-
-                QList<std::tuple<QString, QString, QDateTime>> messages = dbHandler.getGroupMessageHistory(chatName, 50);
-                groupChatWidget->loadChatHistory(messages);
 
                 // Add a system message about the user joining
                 QString systemMessage = QString("%1 has joined the group chat.").arg(currentUser.first);
                 groupChatWidget->addSystemMessage(systemMessage);
 
-                // // Emit signal to indicate group chat is ready
-                // emit groupChatJoined(chatName);
+
+                // Connect the back button signal
+                connect(groupChatWidget, &GroupChatWidget::backRequested, this, [this, groupChatWidget]() {
+                    // Switch back to menu widget
+                    stackedWidget->setCurrentWidget(this);
+
+                    // Optional: Remove the chat widget to free up resources
+                    // This should be done after a delay or in a safe way to prevent crashes
+                    groupChatWidget->deleteLater();
+                });
 
                 // Switch to the GroupChatWidget in the stacked widget
                 stackedWidget->addWidget(groupChatWidget);
