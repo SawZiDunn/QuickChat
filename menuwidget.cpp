@@ -146,21 +146,14 @@ void MenuWidget::startPrivateChat() {
 
 
 void MenuWidget::viewGroupChats() {
-    // Get group chats that the current user has created or joined
-    QStringList userGroupChats = dbHandler.getUserGroups(currentUser.second); // currentUser
-
-    if (userGroupChats.isEmpty()) {
-        QMessageBox::information(this, "No Group Chats",
-                                 "You haven't created or joined any group chats yet.");
-        return;
+    if (!groupChatListWidget) {
+        groupChatListWidget = new GroupChatListWidget(dbHandler, currentUser.second, this);
+        connect(groupChatListWidget, &GroupChatListWidget::backToMenuRequested, [this]() {
+            stackedWidget->setCurrentWidget(this);
+        });
+        stackedWidget->addWidget(groupChatListWidget);
     }
-
-    QString chatList = "Your Group Chats:\n\n";
-    for (const QString &chat : userGroupChats) {
-        chatList += "- " + chat + "\n";
-    }
-
-    QMessageBox::information(this, "Group Chats", chatList);
+    stackedWidget->setCurrentWidget(groupChatListWidget);
 }
 
 void MenuWidget::createGroupChat() {

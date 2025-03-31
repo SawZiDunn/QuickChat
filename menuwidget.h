@@ -16,8 +16,7 @@
 #include "chatdbhandler.h"
 #include "groupchatwidget.h"
 #include "privatechatwidget.h"
-
-
+#include "groupchatlistwidget.h"
 // Structure to store chat request information
 struct ChatRequest {
     QString fromUser;
@@ -80,6 +79,7 @@ private:
     QStringList groupChats;
 
     GroupChatWidget *groupChat;
+    GroupChatListWidget *groupChatListWidget;
 
     // Add the database handler
     ChatDatabaseHandler dbHandler;
