@@ -132,7 +132,7 @@ void GroupChatListWidget::setupTabStyle()
 void GroupChatListWidget::loadCreatedGroups()
 {
     createdGroupsListWidget->clear();
-    auto groups = dbHandler.getGroupDetails(userEmail);
+    auto groups = dbHandler.getCreatedGroups(userEmail);
     
     for (const auto &group : groups) {
         QString id = std::get<0>(group);
@@ -153,7 +153,7 @@ void GroupChatListWidget::loadCreatedGroups()
 void GroupChatListWidget::loadJoinedGroups()
 {
     joinedGroupsListWidget->clear();
-    auto groups = dbHandler.getGroupDetails(userEmail);
+    auto groups = dbHandler.getJoinedGroups(userEmail);
     
     for (const auto &group : groups) {
         QString id = std::get<0>(group);

@@ -580,3 +580,86 @@ QList<std::tuple<QString, QString, int>> ChatDatabaseHandler::getGroupDetails(co
 
     return groups;
 }
+
+QList<std::tuple<QString, QString, int>> ChatDatabaseHandler::getCreatedGroups(const QString &userEmail) const
+{
+    QList<std::tuple<QString, QString, int>> groups;
+    if (!dbInitialized) {
+        return groups;
+    }
+
+    QSqlQuery query(db);
+    query.prepare(
+        "SELECT cg.id, cg.name, COUNT(DISTINCT ucg.user_id) as member_count "
+        "FROM chat_groups cg "
+        "LEFT JOIN user_chat_groups ucg ON cg.id = ucg.chatgroup_id "
+        "WHERE cg.created_by = (SELECT id FROM users WHERE email = :email) "
+        "GROUP BY cg.id, cg.name "
+        "ORDER BY cg.name"
+    );
+    query.bindValue(":email", userEmail);
+
+    if (query.exec()) {
+        while (query.next()) {
+            groups.append(std::make_tuple(
+                query.value(0).toString(),
+                query.value(1).toString(),
+                query.value(2).toInt()
+            ));
+        }
+        qDebug() << "Created groups for" << userEmail << ":" << groups.size() << "groups found";
+    } else {
+        qDebug() << "Error in getCreatedGroups:" << query.lastError().text();
+        qDebug() << "Query:" << query.lastQuery();
+    }
+
+    return groups;
+}
+
+QList<std::tuple<QString, QString, int>> ChatDatabaseHandler::getJoinedGroups(const QString &userEmail) const
+{
+    QList<std::tuple<QString, QString, int>> groups;
+    if (!dbInitialized) {
+        return groups;
+    }
+
+    // Get user ID first
+    QSqlQuery userQuery(db);
+    userQuery.prepare("SELECT id FROM users WHERE email = :email");
+    userQuery.bindValue(":email", userEmail);
+    
+    if (!userQuery.exec() || !userQuery.next()) {
+        qDebug() << "Error getting user ID for" << userEmail;
+        return groups;
+    }
+    
+    int userId = userQuery.value(0).toInt();
+
+    QSqlQuery query(db);
+    query.prepare(
+        "SELECT cg.id, cg.name, COUNT(DISTINCT ucg2.user_id) as member_count "
+        "FROM chat_groups cg "
+        "INNER JOIN user_chat_groups ucg1 ON cg.id = ucg1.chatgroup_id AND ucg1.user_id = :user_id "
+        "LEFT JOIN user_chat_groups ucg2 ON cg.id = ucg2.chatgroup_id "
+        "WHERE cg.created_by != :user_id "
+        "GROUP BY cg.id, cg.name "
+        "ORDER BY cg.name"
+    );
+    query.bindValue(":user_id", userId);
+
+    if (query.exec()) {
+        while (query.next()) {
+            groups.append(std::make_tuple(
+                query.value(0).toString(),
+                query.value(1).toString(),
+                query.value(2).toInt()
+            ));
+        }
+        qDebug() << "Joined groups for" << userEmail << ":" << groups.size() << "groups found";
+    } else {
+        qDebug() << "Error in getJoinedGroups:" << query.lastError().text();
+        qDebug() << "Query:" << query.lastQuery();
+    }
+
+    return groups;
+}
