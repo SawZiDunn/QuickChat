@@ -51,11 +51,11 @@ private:
     QLineEdit *messageInputField;
     QPushButton *sendMessageButton;
 
-    // User data
+    // Data members
     QString userEmail;
     QString recipientEmail;
     ChatDatabaseHandler &dbHandler;
-
+    QTimer *refreshTimer;
 };
 
 #endif // PRIVATECHATWIDGET_H

@@ -1,5 +1,6 @@
 #include "privatechatwidget.h"
 #include <QDateTime>
+#include <QTimer>
 
 PrivateChatWidget::PrivateChatWidget(const QString &currentUserEmail, const QString &recipientEmail, ChatDatabaseHandler &dbHandler, QWidget *parent)
     : QWidget(parent), userEmail(currentUserEmail), recipientEmail(recipientEmail), dbHandler(dbHandler)
@@ -9,6 +10,11 @@ PrivateChatWidget::PrivateChatWidget(const QString &currentUserEmail, const QStr
     partnerNameLabel->setText(recipientEmail);
     partnerEmailLabel->setText(recipientEmail);
     loadChatHistory();
+
+    // Setup refresh timer for chat history
+    refreshTimer = new QTimer(this);
+    connect(refreshTimer, &QTimer::timeout, this, &PrivateChatWidget::loadChatHistory);
+    refreshTimer->start(8000);
 }
 
 void PrivateChatWidget::setupUI()
