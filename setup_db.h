@@ -77,6 +77,7 @@ int setup_chat_db()
         "recipient_id INTEGER, "
         "content TEXT NOT NULL, "
         "timestamp DATETIME NOT NULL, "
+        "type TEXT DEFAULT 'message', "
         "FOREIGN KEY (sender_id) REFERENCES users (id), "
         "FOREIGN KEY (chatgroup_id) REFERENCES chat_groups (id), "
         "FOREIGN KEY (recipient_id) REFERENCES users (id), "
@@ -87,7 +88,7 @@ int setup_chat_db()
 
     // Populate Users table with demo data
     QStringList demoUsers = {
-        "INSERT INTO users (name, email, password) VALUES ('Alice', 'alice@example.com', '123');",
+        "INSERT INTO users (name, email, password) VALUES ('Alice', 'alice@gmail.com', '123');",
         "INSERT INTO users (name, email, password) VALUES ('Bob', 'bob@gmail.com', '123');",
         "INSERT INTO users (name, email, password) VALUES ('Charlie', 'charlie@gmail.com', '123');",
         "INSERT INTO users (name, email, password) VALUES ('Diana', 'diana@gmail.com', '123');",
@@ -150,7 +151,7 @@ int setup_chat_db()
 
         QString("INSERT INTO messages (sender_id, chatgroup_id, recipient_id, content, timestamp) "
                 "VALUES (2, 1, NULL, 'Hi Alice, how are you?', '%1');")
-            .arg(baseTime.addSecs(60).toString("yyyy-MM-dd hh:mm:ss")),
+            .arg(baseTime.addDays(60).toString("yyyy-MM-dd hh:mm:ss")),
 
         QString("INSERT INTO messages (sender_id, chatgroup_id, recipient_id, content, timestamp) "
                 "VALUES (3, 1, NULL, 'Welcome to the general chat!', '%1');")

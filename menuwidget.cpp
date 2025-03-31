@@ -192,7 +192,7 @@ void MenuWidget::createGroupChat() {
 void MenuWidget::joinGroupChat() {
     bool ok;
     QString chatId = QInputDialog::getText(this, "Join Group Chat",
-                                             "Enter the group chat name:",
+                                             "Enter the group chat ID:",
                                              QLineEdit::Normal, "", &ok);
     if (ok && !chatId.isEmpty()) {
         // Check if the group chat exists
@@ -200,37 +200,28 @@ void MenuWidget::joinGroupChat() {
         qDebug() << chatName;
         if (!chatName.isEmpty()) {
             // Add user to group chat in database
-            if (dbHandler.joinGroupChat(currentUser.second, chatId)) {
+            // Create and set up the GroupChatWidget
 
-                // Create and set up the GroupChatWidget
-                GroupChatWidget* groupChatWidget = new GroupChatWidget(dbHandler, chatName, this);
-                groupChatWidget->setGroupName(chatName);
-
-                // Add a system message about the user joining
-                QString systemMessage = QString("%1 has joined the group chat.").arg(currentUser.first);
-                groupChatWidget->addSystemMessage(systemMessage);
+            GroupChatWidget* groupChatWidget = new GroupChatWidget(dbHandler, chatId, currentUser, this);
 
 
-                // Connect the back button signal
-                connect(groupChatWidget, &GroupChatWidget::backRequested, this, [this, groupChatWidget]() {
-                    // Switch back to menu widget
-                    stackedWidget->setCurrentWidget(this);
+            // Connect the back button signal
+            connect(groupChatWidget, &GroupChatWidget::backRequested, this, [this, groupChatWidget]() {
+                // Switch back to menu widget
+                stackedWidget->setCurrentWidget(this);
 
-                    // Optional: Remove the chat widget to free up resources
-                    // This should be done after a delay or in a safe way to prevent crashes
-                    groupChatWidget->deleteLater();
-                });
+                // Optional: Remove the chat widget to free up resources
+                // This should be done after a delay or in a safe way to prevent crashes
+                groupChatWidget->deleteLater();
+            });
 
-                // Switch to the GroupChatWidget in the stacked widget
-                stackedWidget->addWidget(groupChatWidget);
-                stackedWidget->setCurrentWidget(groupChatWidget);
+            // Switch to the GroupChatWidget in the stacked widget
+            stackedWidget->addWidget(groupChatWidget);
+            stackedWidget->setCurrentWidget(groupChatWidget);
 
-                QMessageBox::information(this, "Group Chat Joined",
-                                         "You have joined the group chat successfully.");
-            } else {
-                QMessageBox::warning(this, "Join Group Chat",
-                                     "Failed to join group chat. You might already be a member.");
-            }
+            QMessageBox::information(this, "Group Chat Joined",
+                                     "You have joined the group chat successfully.");
+
         } else {
             QMessageBox::warning(this, "Group Chat Not Found",
                                  "No group chat with this name was found.");

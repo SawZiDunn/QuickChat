@@ -55,6 +55,7 @@ private:
     QString userEmail;
     QString recipientEmail;
     ChatDatabaseHandler &dbHandler;
+
 };
 
 #endif // PRIVATECHATWIDGET_H

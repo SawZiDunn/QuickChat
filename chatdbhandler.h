@@ -38,15 +38,18 @@ public:
     bool userExists(const QString & email);
     QString groupChatExists(const QString & chatId);
     QStringList getGroupChatMembers(const QString &chatName);
+    bool removeUserFromGroup(const QString &email, const QString &groupName);
 
     // Message operations
     bool sendDirectMessage(const QString &sender, const QString &recipient,
                            const QString &content);
     bool sendGroupMessage(const QString &sender, const QString &groupName,
-                          const QString &content);
+                          const QString &content, const QString &type = "message");
     // content and datetime
     QList<std::tuple<QString, QString, QDateTime>> getDirectMessageHistory(const QString &user1, const QString &user2, int limit);
-    QList<std::tuple<QString, QString, QDateTime>> getGroupMessageHistory(const QString &groupName, int limit);
+    QList<std::tuple<QString, QString, QString, QDateTime, QString>> getGroupMessageHistory(const QString &groupName, int limit);
+
+    bool isGroupMember(const QString &email, const QString &groupName);
 
 private:
     QSqlDatabase db;

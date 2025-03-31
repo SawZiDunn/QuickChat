@@ -1,17 +1,44 @@
 #include "groupchatwidget.h"
 
-GroupChatWidget::GroupChatWidget(ChatDatabaseHandler &dbHandler, QString groupName, QWidget *parent)
-    : QWidget(parent), dbHandler(dbHandler), currentGroupName(groupName)
+GroupChatWidget::GroupChatWidget(ChatDatabaseHandler &dbHandler, QString groupId, QPair<QString, QString> currentUser, QWidget *parent)
+    : QWidget(parent), dbHandler(dbHandler), currentUser(currentUser)
 {
     setupUI();
+    setGroupName(dbHandler.groupChatExists(groupId));
+
     // Load chat history
     setupConnections();
-
     loadChatHistory();
 
-    // Get the list of members for this group
+    // Setup auto-refresh timer
+    refreshTimer = new QTimer(this);
+    connect(refreshTimer, &QTimer::timeout, this, &GroupChatWidget::loadChatHistory);
+    refreshTimer->start(8000); // Refresh every 8 seconds
+
+
+
+    // Get the, list of members for this group
     QStringList members = dbHandler.getGroupChatMembers(currentGroupName);
     setMembersList(members);
+
+    // first - name, second -email
+    if (!dbHandler.isGroupMember(currentUser.second, currentGroupName)) {
+
+        // Add a system message about the user joining
+
+        dbHandler.joinGroupChat(currentUser.second, groupId);
+        QString systemMessage = QString("%1 has joined the group chat.").arg(currentUser.first);
+        // Save system message to database with type 'system'
+        dbHandler.sendGroupMessage(currentUser.second, currentGroupName, systemMessage, "system");
+
+    }
+}
+
+GroupChatWidget::~GroupChatWidget()
+{
+    // Stop the timer when the widget is destroyed
+    refreshTimer->stop();
+    delete refreshTimer;
 }
 
 void GroupChatWidget::setupUI()
@@ -21,7 +48,7 @@ void GroupChatWidget::setupUI()
     mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->setSpacing(0);
 
-    // ===== RIGHT SIDE: Current Chat Area =====
+    // chat area
     QWidget *chatPanel = new QWidget();
     QVBoxLayout *chatLayout = new QVBoxLayout(chatPanel);
     chatLayout->setContentsMargins(0, 0, 0, 0);
@@ -35,12 +62,9 @@ void GroupChatWidget::setupUI()
     QHBoxLayout *chatHeaderLayout = new QHBoxLayout(chatHeader);
     chatHeaderLayout->setContentsMargins(15, 10, 15, 10);
 
-    backButton = new QPushButton();
-    backButton->setIcon(QIcon::fromTheme("go-previous", QIcon(":/icons/back.png")));
-    backButton->setToolTip("Go back to menu");
-    backButton->setFixedSize(32, 32);
+    backButton = new QPushButton("Back");
     backButton->setCursor(Qt::PointingHandCursor);
-    backButton->setStyleSheet("QPushButton { background-color: #2979ff; border-radius: 16px; } "
+    backButton->setStyleSheet("QPushButton { background-color: #2979ff; border-radius: 6px; } "
                               "QPushButton:hover { background-color: #448aff; }");
 
     groupNameLabel = new QLabel("Group Chat");
@@ -57,7 +81,7 @@ void GroupChatWidget::setupUI()
     leaveChatButton->setFixedWidth(70);
     leaveChatButton->setCursor(Qt::PointingHandCursor);
     leaveChatButton->setStyleSheet("QPushButton { background-color: #f44336; color: white; "
-                                   "border-radius: 4px; padding: 6px; } "
+                                   "border-radius: 4px; padding: 6px 12px; } "
                                    "QPushButton:hover { background-color: #e53935; }");
 
     chatHeaderLayout->addWidget(backButton);
@@ -99,7 +123,7 @@ void GroupChatWidget::setupUI()
     sendMessageButton->setCursor(Qt::PointingHandCursor);
     sendMessageButton->setStyleSheet(
         "QPushButton { background-color: #2979ff; color: white; "
-        "border-radius: 18px; font-weight: bold; } "
+        "border: 1px solid #444; border-radius: 18px; font-weight: bold; } "
         "QPushButton:hover { background-color: #448aff; }");
 
     messageInputLayout->addWidget(messageInputField);
@@ -137,6 +161,11 @@ void GroupChatWidget::setupUI()
     this->setStyleSheet("background-color: #1e1e1e;");
 }
 
+QString GroupChatWidget::formatTimestamp(const QDateTime &timestamp)
+{
+    return timestamp.toString("hh:mm AP");
+}
+
 
 void GroupChatWidget::setupConnections()
 {
@@ -169,10 +198,30 @@ QString GroupChatWidget::getGroupName() const
 void GroupChatWidget::setMembersList(const QStringList &members)
 {
     membersListWidget->clear();
+
+    // Add title/header
+    QListWidgetItem *header = new QListWidgetItem("Group Members (" + QString::number(members.size()) + ")");
+    header->setFlags(Qt::NoItemFlags);
+    header->setForeground(QBrush(QColor("#bbbbbb")));
+    header->setBackground(QBrush(QColor("#2a2a2a")));
+    header->setTextAlignment(Qt::AlignCenter);
+    membersListWidget->addItem(header);
+
+    // Add separator
+    QListWidgetItem *separator = new QListWidgetItem();
+    separator->setFlags(Qt::NoItemFlags);
+    membersListWidget->addItem(separator);
+    membersListWidget->setItemWidget(separator, new QFrame());
+
+    // Add members
     for (const QString &member : members) {
-        QListWidgetItem *item = new QListWidgetItem(QIcon(":/icons/user.png"), member);
+        QListWidgetItem *item = new QListWidgetItem(QIcon(":/icons/user.png"), " " + member);
+        item->setSizeHint(QSize(item->sizeHint().width(), 30)); // Set consistent height
         membersListWidget->addItem(item);
     }
+
+    // Set width to accommodate content
+    membersListWidget->setMinimumWidth(200);
 }
 
 void GroupChatWidget::addMember(const QString &username)
@@ -200,129 +249,135 @@ void GroupChatWidget::loadChatHistory()
 {
     clearChatHistory();
 
-    // Fetch messages
-    QList<std::tuple<QString, QString, QDateTime>> messages = dbHandler.getGroupMessageHistory(currentGroupName, 50);
+    // Fetch messages with type
+    QList<std::tuple<QString, QString, QString, QDateTime, QString>> messages =
+        dbHandler.getGroupMessageHistory(currentGroupName, 50);
 
     QString lastDate;
-    QString chatText;
 
     for (const auto& msg : messages) {
         QString sender = std::get<0>(msg);
-        QString content = std::get<1>(msg);
-        QDateTime timestamp = std::get<2>(msg);
+        QString senderEmail = std::get<1>(msg);
+        QString content = std::get<2>(msg);
+        QDateTime timestamp = std::get<3>(msg);
+        QString type = std::get<4>(msg);
 
         // Add date separator if it's a new day
         QString dateStr = timestamp.toString("yyyy-MM-dd");
         if (lastDate != dateStr) {
-            chatText += "<center><span style='color:#777777;'>--- " + dateStr + " ---</span></center><br>";
+            // Create a new cursor at the end
+            QTextCursor cursor = chatHistoryDisplay->textCursor();
+            cursor.movePosition(QTextCursor::End);
+            chatHistoryDisplay->setTextCursor(cursor);
+
+            // Create a block format with center alignment
+            QTextBlockFormat blockFormat;
+            blockFormat.setAlignment(Qt::AlignCenter);
+
+            // Apply the block format
+            cursor.insertBlock(blockFormat);
+
+            // Insert the date separator text with styling
+            cursor.insertHtml("<span style='color:#777777;'>--- " + dateStr + " ---</span>");
+
+            // Add another block with default alignment to reset formatting
+            cursor.insertBlock();
+
             lastDate = dateStr;
         }
 
-        // Format differently based on if it's your message or someone else's
-        bool isCurrentUser = (sender == "You" || sender == "CurrentUser"); // Replace with actual logic
-
-        if (isCurrentUser) {
-            // Right-aligned for current user's messages
-            chatText += "<div style='text-align: right;'>";
-            chatText += "<div style='display: inline-block; background-color: #2979ff; color: white; "
-                        "border-radius: 15px; padding: 8px 12px; margin: 2px 0; max-width: 80%;'>";
-            chatText += "<span style='font-size: 0.8em; color: #e6e6e6;'>"
-                        + timestamp.toString("HH:mm") + "</span><br>";
-            chatText += content;
-            chatText += "</div></div><br>";
+        // Format based on message type
+        if (type == "system") {
+            addSystemMessage(content, timestamp);
         } else {
-            // Left-aligned for others' messages
-            chatText += "<div style='text-align: left;'>";
-            chatText += "<b style='color: #66bb6a;'>" + sender + "</b><br>";
-            chatText += "<div style='display: inline-block; background-color: #383838; "
-                        "border-radius: 15px; padding: 8px 12px; margin: 2px 0; max-width: 80%;'>";
-            chatText += "<span style='font-size: 0.8em; color: #aaaaaa;'>"
-                        + timestamp.toString("HH:mm") + "</span><br>";
-            chatText += content;
-            chatText += "</div></div><br>";
+            // Check if message is from current user
+            bool isCurrentUser = (sender == currentUser.first || sender == currentUser.second);
+
+            if (isCurrentUser) {
+                addOutgoingMessage(content, timestamp);
+            } else {
+                addIncomingMessage(sender, senderEmail, content, timestamp); // Using sender as email temporarily
+            }
         }
+
     }
 
     if (messages.isEmpty()) {
-        chatText = "<center><span style='color:#777777;'>--- No messages yet ---</span></center>";
+        chatHistoryDisplay->append("<center><span style='color:#777777;'>--- No messages yet ---</span></center>");
     }
-
-    chatHistoryDisplay->setHtml(chatText);
 
     // Scroll to the bottom
     QScrollBar *scrollbar = chatHistoryDisplay->verticalScrollBar();
     scrollbar->setValue(scrollbar->maximum());
 }
 
-void GroupChatWidget::addSystemMessage(const QString &message)
+void GroupChatWidget::addSystemMessage(const QString &message, QDateTime msgTimestamp)
 {
-    QString timestamp = QDateTime::currentDateTime().toString("HH:mm");
+    // Format the timestamp for display
+    QString timestampStr = formatTimestamp(msgTimestamp);
 
-    QString html = "<center><div style='display: inline-block; background-color: #333; "
-                   "border-radius: 10px; padding: 5px 10px; margin: 5px 0;'>"
-                   "<span style='color:#9e9e9e;'>" + timestamp +
-                   " — " + message + "</span></div></center><br>";
+    // Create a text cursor at the end of the document
+    QTextCursor cursor = chatHistoryDisplay->textCursor();
+    cursor.movePosition(QTextCursor::End);
 
-    chatHistoryDisplay->insertHtml(html);
+    // Create a block format with center alignment
+    QTextBlockFormat blockFormat;
+    blockFormat.setAlignment(Qt::AlignCenter);
+
+    // Apply the block format
+    cursor.insertBlock(blockFormat);
+
+    // Create the HTML for the system message
+    QString html = "<div style='display: inline-block; background-color: #333; "
+                   "border-radius: 10px; padding: 3px 10px; margin: 2px 0;'>"
+                   "<span style='color:#9e9e9e;'>" + timestampStr +
+                   " — " + message + "</span></div><br>";
+
+    // Insert the HTML at the cursor position
+    cursor.insertHtml(html);
 
     // Auto-scroll to bottom
     QScrollBar *scrollbar = chatHistoryDisplay->verticalScrollBar();
     scrollbar->setValue(scrollbar->maximum());
 }
 
-void GroupChatWidget::addMessage(const QString &sender, const QString &message)
+void GroupChatWidget::addIncomingMessage(const QString &sender, const QString &email, const QString &message, QDateTime msgTimestamp)
 {
-    QDateTime timestamp = QDateTime::currentDateTime();
-
-    // Format differently based on if it's your message or someone else's
-    bool isCurrentUser = (sender == "You" || sender == "CurrentUser"); // Replace with actual logic
-
-    QString html;
-    if (isCurrentUser) {
-        // Right-aligned for current user's messages
-        html = "<div style='text-align: right;'>";
-        html += "<div style='display: inline-block; background-color: #2979ff; color: white; "
-                "border-radius: 15px; padding: 8px 12px; margin: 2px 0; max-width: 80%;'>";
-        html += "<span style='font-size: 0.8em; color: #e6e6e6;'>"
-                + timestamp.toString("HH:mm") + "</span><br>";
-        html += message;
-        html += "</div></div><br>";
-    } else {
-        // Left-aligned for others' messages
-        html = "<div style='text-align: left;'>";
-        html += "<b style='color: #66bb6a;'>" + sender + "</b><br>";
-        html += "<div style='display: inline-block; background-color: #383838; "
-                "border-radius: 15px; padding: 8px 12px; margin: 2px 0; max-width: 80%;'>";
-        html += "<span style='font-size: 0.8em; color: #aaaaaa;'>"
-                + timestamp.toString("HH:mm") + "</span><br>";
-        html += message;
-        html += "</div></div><br>";
-    }
-
-    chatHistoryDisplay->insertHtml(html);
-
-    // Auto-scroll to bottom
-    QScrollBar *scrollbar = chatHistoryDisplay->verticalScrollBar();
-    scrollbar->setValue(scrollbar->maximum());
+    QString timestamp = formatTimestamp(msgTimestamp);
+    chatHistoryDisplay->append(QString("<div style='margin: 16px 0; max-width: 70%; clear: both;'>"
+                                       "<div style='float: left; background-color: transparent; padding: 8px 12px; border-radius: 12px; border-bottom-left-radius: 4px;'>"
+                                       "<div style='margin-bottom: 4px;'>"
+                                       "<span style='color:#81c784; font-weight: bold; font-size: 13px;'>%1</span><br>"
+                                       "<span style='color:#9e9e9e; font-size: 11px;'>%2</span>"
+                                       "</div>"
+                                       "<div style='color: #ffffff; font-size: 13px; line-height: 1.4;'>%3</div>"
+                                       "<div style='text-align: right; font-size: 10px; color: #888888; margin-top: 4px;'>%4</div>"
+                                       "</div>"
+                                       "<div style='clear: both;'></div>"
+                                       "</div>")
+                                   .arg(sender)
+                                   .arg(email)
+                                   .arg(message)
+                                   .arg(timestamp));
 }
 
-void GroupChatWidget::addHistoryMessage(const QString &sender, const QString &message, const QDateTime &timestamp)
+void GroupChatWidget::addOutgoingMessage(const QString &message, QDateTime msgTimestamp)
 {
-    QString timeStr = timestamp.toString("[hh:mm:ss]");
-    QString dateStr = timestamp.toString("yyyy-MM-dd");
-
-    // If this is the first message of a day or the first message overall, add a date separator
-    static QString lastDate;
-    if (lastDate != dateStr) {
-        chatHistoryDisplay->append("<center><span style='color:#777777;'>--- " +
-                                   dateStr + " ---</span></center>");
-        lastDate = dateStr;
-    }
-
-    // Format history messages with a different color from current session messages
-    chatHistoryDisplay->append("<span style='color:#aaaaaa;'>" + timeStr + "</span> "
-                                                                           "<span style='color:#4db6ac;'><b>" +
-                               sender + ":</b></span> " + message);
+    QString timestamp = formatTimestamp(msgTimestamp);
+    chatHistoryDisplay->append(QString("<div style='margin: 16px 0; max-width: 70%; clear: both;'>"
+                                       "<div style='float: right; background-color: transparent; padding: 8px 12px; border-radius: 12px; border-bottom-right-radius: 4px;'>"
+                                       "<div style='margin-bottom: 4px;'>"
+                                       "<span style='color:#90caf9; font-weight: bold; font-size: 13px;'>You</span><br>"
+                                       "<span style='color:#bbdefb; font-size: 11px;'>%1</span>"
+                                       "</div>"
+                                       "<div style='color: #ffffff; font-size: 13px; line-height: 1.4;'>%2</div>"
+                                       "<div style='text-align: right; font-size: 10px; color: #bbdefb; margin-top: 4px;'>%3</div>"
+                                       "</div>"
+                                       "<div style='clear: both;'></div>"
+                                       "</div>")
+                                   .arg(currentUser.second)
+                                   .arg(message)
+                                   .arg(timestamp));
 }
 
 void GroupChatWidget::sendMessage()
@@ -331,22 +386,63 @@ void GroupChatWidget::sendMessage()
         QString message = messageInputField->text();
         messageInputField->clear();
 
-        // Display the message in the chat
-        QString html = "<div style='text-align: right;'>";
-        html += "<div style='display: inline-block; background-color: #2979ff; color: white; "
-                "border-radius: 15px; padding: 8px 12px; margin: 2px 0; max-width: 80%;'>";
-        html += "<span style='font-size: 0.8em; color: #e6e6e6;'>"
-                + QDateTime::currentDateTime().toString("HH:mm") + "</span><br>";
-        html += message;
-        html += "</div></div><br>";
+        // Save to database
+        bool success = dbHandler.sendGroupMessage(currentUser.second, currentGroupName, message);
 
-        chatHistoryDisplay->insertHtml(html);
+        if (success) {
+            // Add to UI only after successful database insertion
+            QDateTime currentTime = QDateTime::currentDateTime();
+            addOutgoingMessage(message, currentTime);
 
-        // Auto-scroll to bottom
-        QScrollBar *scrollbar = chatHistoryDisplay->verticalScrollBar();
-        scrollbar->setValue(scrollbar->maximum());
+            // Auto-scroll to bottom
+            QScrollBar *scrollbar = chatHistoryDisplay->verticalScrollBar();
+            scrollbar->setValue(scrollbar->maximum());
 
-        // Emit the message for processing and saving to DB
-        emit messageSubmitted(message);
+            // Emit the message for processing
+            emit messageSubmitted(message);
+
+            // Reset the refresh timer to avoid immediate refresh after sending
+            refreshTimer->stop();
+            refreshTimer->start(8000);
+        }
+        else {
+            // Handle database error
+            messageInputField->setText(message); // Put the message back in the input field
+            QMessageBox::warning(this, "Error", "Failed to send message. Please try again.");
+        }
+    }
+}
+
+// slot
+void GroupChatWidget::leaveChatRequested()
+{
+    // Ask for confirmation before leaving
+    QMessageBox confirmBox;
+    confirmBox.setWindowTitle("Leave Chat");
+    confirmBox.setText("Are you sure you want to leave this group chat?");
+    confirmBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+    confirmBox.setDefaultButton(QMessageBox::No);
+
+    int result = confirmBox.exec();
+
+    if (result == QMessageBox::Yes) {
+        // Remove user from the group in database
+        bool success = dbHandler.removeUserFromGroup(currentUser.second, currentGroupName);
+
+        if (success) {
+            // Notify other users by adding a system message
+            QString leaveMessage = currentUser.first + " has left the group";
+
+            dbHandler.sendGroupMessage(currentUser.second, currentGroupName, leaveMessage, "system");
+
+            // Emit signal to go back to the main menu or group list
+            emit backRequested();
+        } else {
+            QMessageBox errorBox;
+            errorBox.setWindowTitle("Error");
+            errorBox.setText("Failed to leave the group. Please try again.");
+            errorBox.setIcon(QMessageBox::Warning);
+            errorBox.exec();
+        }
     }
 }

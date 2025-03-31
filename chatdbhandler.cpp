@@ -187,12 +187,12 @@ int ChatDatabaseHandler::createGroupChat(const QString &name, const QString &cre
 
 
     if (!userQuery.exec() || !userQuery.next()) {
-        qDebug() << creatorEmail;
+
         return -1; // No user found with this email
     }
 
     int creatorId = userQuery.value(0).toInt();
-    qDebug() << creatorId;
+
 
     // Check if group already exists
     QSqlQuery checkQuery(db);
@@ -247,15 +247,6 @@ bool ChatDatabaseHandler::joinGroupChat(const QString &userEmail, const QString 
     }
 
     int userId = userQuery.value(0).toInt();
-
-    // Get group ID
-    // QSqlQuery groupQuery(db);
-    // groupQuery.prepare("SELECT id FROM chat_groups WHERE id = :groupId");
-    // groupQuery.bindValue(":groupId", group);
-
-    // if (!groupQuery.exec() || !groupQuery.next()) {
-    //     return false; // Group not found
-    // }
 
     // Check if user is already in the group
     QSqlQuery checkQuery(db);
@@ -374,7 +365,8 @@ bool ChatDatabaseHandler::sendDirectMessage(const QString &sender, const QString
     return true;
 }
 
-bool ChatDatabaseHandler::sendGroupMessage(const QString &sender, const QString &groupName, const QString &content)
+bool ChatDatabaseHandler::sendGroupMessage(const QString &sender, const QString &groupName,
+                                           const QString &content, const QString &type)
 {
     if (!dbInitialized || content.isEmpty()) {
         return false;
@@ -382,35 +374,35 @@ bool ChatDatabaseHandler::sendGroupMessage(const QString &sender, const QString 
 
     // Get sender ID
     QSqlQuery senderQuery(db);
-    senderQuery.prepare("SELECT id FROM users WHERE name = :name");
-    senderQuery.bindValue(":name", sender);
-
+    senderQuery.prepare("SELECT id FROM users WHERE email = :email");
+    senderQuery.bindValue(":email", sender);
     if (!senderQuery.exec() || !senderQuery.next()) {
+        qDebug() << sender;
+
         return false; // Sender not found
     }
-
     int senderId = senderQuery.value(0).toInt();
 
     // Get group ID
     QSqlQuery groupQuery(db);
     groupQuery.prepare("SELECT id FROM chat_groups WHERE name = :name");
     groupQuery.bindValue(":name", groupName);
-
     if (!groupQuery.exec() || !groupQuery.next()) {
+        qDebug() << "gpnot found";
         return false; // Group not found
-    }
 
+    }
     int groupId = groupQuery.value(0).toInt();
 
     // Send message
     QSqlQuery messageQuery(db);
-    messageQuery.prepare("INSERT INTO messages (sender_id, chatgroup_id, recipient_id, content, timestamp) "
-                         "VALUES (:sender_id, :group_id, NULL, :content, :timestamp)");
+    messageQuery.prepare("INSERT INTO messages (sender_id, chatgroup_id, recipient_id, content, timestamp, type) "
+                         "VALUES (:sender_id, :group_id, NULL, :content, :timestamp, :type)");
     messageQuery.bindValue(":sender_id", senderId);
     messageQuery.bindValue(":group_id", groupId);
     messageQuery.bindValue(":content", content);
     messageQuery.bindValue(":timestamp", QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss"));
-
+    messageQuery.bindValue(":type", type);
     return messageQuery.exec();
 }
 
@@ -454,32 +446,103 @@ QList<std::tuple<QString, QString, QDateTime>> ChatDatabaseHandler::getDirectMes
 }
 
 
-QList<std::tuple<QString, QString, QDateTime>> ChatDatabaseHandler::getGroupMessageHistory(const QString &groupName, int limit)
+QList<std::tuple<QString, QString, QString, QDateTime, QString>> ChatDatabaseHandler::getGroupMessageHistory(const QString &groupName, int limit)
 {
-    QList<std::tuple<QString, QString, QDateTime>> messages;
-    if (!dbInitialized) {
-        return messages;
-    }
+    QList<std::tuple<QString, QString, QString, QDateTime, QString>> messages;
 
     QSqlQuery query(db);
-    query.prepare("SELECT u.name, m.content, m.timestamp FROM messages m "
+    query.prepare("SELECT u.name, u.email, m.content, m.timestamp, m.type FROM messages m "
                   "JOIN users u ON m.sender_id = u.id "
                   "JOIN chat_groups g ON m.chatgroup_id = g.id "
-                  "WHERE g.name = :group_name "
-                  "ORDER BY m.timestamp DESC LIMIT :limit");
-    query.bindValue(":group_name", groupName);
+                  "WHERE g.name = :groupName "
+                  "ORDER BY m.timestamp ASC LIMIT :limit");
+
+    query.bindValue(":groupName", groupName);
     query.bindValue(":limit", limit);
 
     if (query.exec()) {
         while (query.next()) {
             QString sender = query.value(0).toString();
-            QString content = query.value(1).toString();
-            QDateTime timestamp = query.value(2).toDateTime();
+            QString senderEmail = query.value(1).toString();
+            QString content = query.value(2).toString();
+            QDateTime timestamp = QDateTime::fromString(query.value(3).toString(), "yyyy-MM-dd hh:mm:ss");
+            QString type = query.value(4).toString();  // Get the type
 
-            messages.append(std::make_tuple(sender, content, timestamp));
+            messages.append(std::make_tuple(sender, senderEmail, content, timestamp, type));
         }
-        // Reverse the list to maintain chronological order
-        std::reverse(messages.begin(), messages.end());
     }
+
+
     return messages;
+}
+
+bool ChatDatabaseHandler::isGroupMember(const QString &email, const QString &groupName)
+{
+    if (!dbInitialized) {
+        return false;
+    }
+
+    // qDebug() << "email" << email << "gp name: " << groupName;
+
+    QSqlQuery query(db);
+    query.prepare("SELECT user_id FROM user_chat_groups ucg "
+                  "JOIN users u ON ucg.user_id = u.id "
+                  "JOIN chat_groups g ON ucg.chatgroup_id = g.id "
+                  "WHERE u.email = :email AND g.name = :groupName");
+
+    query.bindValue(":email", email);
+    query.bindValue(":groupName", groupName);
+
+    if (query.exec() && query.next()) {
+        // If a record is found, the user is a member of the group
+        // qDebug() << email << "is already a group member";
+        return true;
+    }
+
+    // qDebug() << email << "is not a group member";
+
+    return false;
+}
+
+bool ChatDatabaseHandler::removeUserFromGroup(const QString &email, const QString &groupName)
+{
+    if (!dbInitialized) {
+        return false;
+    }
+
+
+
+    // First, get the user and group IDs
+    int userId = -1;
+    int groupId = -1;
+
+    QSqlQuery userQuery(db);
+    userQuery.prepare("SELECT id FROM users WHERE email = :email");
+    userQuery.bindValue(":email", email);
+
+    if (userQuery.exec() && userQuery.next()) {
+        userId = userQuery.value(0).toInt();
+
+    } else {
+        return false; // User not found
+    }
+
+    QSqlQuery groupQuery(db);
+    groupQuery.prepare("SELECT id FROM chat_groups WHERE name = :name");
+    groupQuery.bindValue(":name", groupName);
+
+    if (groupQuery.exec() && groupQuery.next()) {
+        groupId = groupQuery.value(0).toInt();
+
+    } else {
+        return false; // Group not found
+    }
+
+    // Now remove the user from the group
+    QSqlQuery removeQuery(db);
+    removeQuery.prepare("DELETE FROM user_chat_groups WHERE user_id = :userId AND chatgroup_id = :groupId");
+    removeQuery.bindValue(":userId", userId);
+    removeQuery.bindValue(":groupId", groupId);
+
+    return removeQuery.exec();
 }
