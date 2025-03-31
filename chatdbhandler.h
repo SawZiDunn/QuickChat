@@ -35,6 +35,7 @@ public:
     int createGroupChat(const QString &name, const QString &creatorEmail);
     bool joinGroupChat(const QString &userEmail, const QString &groupId);
     QStringList getUserGroups(const QString &userEmail) const;
+    QList<std::tuple<QString, QString, int>> getGroupDetails(const QString &userEmail) const;  // Returns (id, name, member_count)
     bool userExists(const QString & email);
     QString groupChatExists(const QString & chatId);
     QStringList getGroupChatMembers(const QString &chatName);

@@ -132,11 +132,20 @@ void GroupChatListWidget::setupTabStyle()
 void GroupChatListWidget::loadCreatedGroups()
 {
     createdGroupsListWidget->clear();
-    auto groups = dbHandler.getUserGroups(userEmail);
+    auto groups = dbHandler.getGroupDetails(userEmail);
     
     for (const auto &group : groups) {
-        QListWidgetItem *item = new QListWidgetItem(group);
-        item->setData(Qt::UserRole, group);  // store group ID
+        QString id = std::get<0>(group);
+        QString name = std::get<1>(group);
+        int memberCount = std::get<2>(group);
+        
+        QString displayText = QString("%1 (ID: %2)\n%3 members")
+                                .arg(name)
+                                .arg(id)
+                                .arg(memberCount);
+
+        QListWidgetItem *item = new QListWidgetItem(displayText);
+        item->setData(Qt::UserRole, id);  // store group ID
         createdGroupsListWidget->addItem(item);
     }
 }
@@ -144,11 +153,20 @@ void GroupChatListWidget::loadCreatedGroups()
 void GroupChatListWidget::loadJoinedGroups()
 {
     joinedGroupsListWidget->clear();
-    auto groups = dbHandler.getUserGroups(userEmail);
+    auto groups = dbHandler.getGroupDetails(userEmail);
     
     for (const auto &group : groups) {
-        QListWidgetItem *item = new QListWidgetItem(group);
-        item->setData(Qt::UserRole, group);  // store group ID
+        QString id = std::get<0>(group);
+        QString name = std::get<1>(group);
+        int memberCount = std::get<2>(group);
+        
+        QString displayText = QString("%1 (ID: %2)\n%3 members")
+                                .arg(name)
+                                .arg(id)
+                                .arg(memberCount);
+
+        QListWidgetItem *item = new QListWidgetItem(displayText);
+        item->setData(Qt::UserRole, id);  // store group ID
         joinedGroupsListWidget->addItem(item);
     }
 }

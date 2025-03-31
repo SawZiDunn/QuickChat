@@ -546,3 +546,37 @@ bool ChatDatabaseHandler::removeUserFromGroup(const QString &email, const QStrin
 
     return removeQuery.exec();
 }
+
+QList<std::tuple<QString, QString, int>> ChatDatabaseHandler::getGroupDetails(const QString &userEmail) const
+{
+    QList<std::tuple<QString, QString, int>> groups;
+
+    if (!dbInitialized) {
+        return groups;
+    }
+
+    QSqlQuery query(db);
+    query.prepare(
+        "SELECT g.id, g.name, COUNT(DISTINCT ug2.user_id) as member_count "
+        "FROM chat_groups g "
+        "JOIN user_chat_groups ug ON g.id = ug.chatgroup_id "
+        "JOIN users u ON u.id = ug.user_id "
+        "JOIN user_chat_groups ug2 ON g.id = ug2.chatgroup_id "
+        "WHERE u.email = :userEmail "
+        "GROUP BY g.id, g.name "
+        "ORDER BY g.name"
+    );
+    query.bindValue(":userEmail", userEmail);
+
+    if (query.exec()) {
+        while (query.next()) {
+            groups.append(std::make_tuple(
+                query.value(0).toString(),  // group id
+                query.value(1).toString(),  // group name
+                query.value(2).toInt()      // member count
+            ));
+        }
+    }
+
+    return groups;
+}
