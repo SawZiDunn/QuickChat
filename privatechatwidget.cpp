@@ -5,6 +5,9 @@ PrivateChatWidget::PrivateChatWidget(const QString &currentUserEmail, const QStr
     : QWidget(parent), userEmail(currentUserEmail), recipientEmail(recipientEmail), dbHandler(dbHandler)
 {
     setupUI();
+    // Set the recipient's email in the UI
+    partnerNameLabel->setText(recipientEmail);
+    partnerEmailLabel->setText(recipientEmail);
     loadChatHistory();
 }
 
@@ -219,9 +222,14 @@ void PrivateChatWidget::sendMessage()
 {
     QString message = messageInputField->text().trimmed();
     if (!message.isEmpty()) {
-        emit messageSubmitted(message);
-        addOutgoingMessage(message);
-        messageInputField->clear();
+        // Save message to database
+        if (dbHandler.sendDirectMessage(userEmail, recipientEmail, message)) {
+            emit messageSubmitted(message);
+            addOutgoingMessage(message);
+            messageInputField->clear();
+        } else {
+            addSystemMessage("Failed to send message. Please try again.");
+        }
     }
 }
 

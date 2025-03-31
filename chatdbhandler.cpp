@@ -326,10 +326,11 @@ bool ChatDatabaseHandler::sendDirectMessage(const QString &sender, const QString
 
     // Get sender ID
     QSqlQuery senderQuery(db);
-    senderQuery.prepare("SELECT id FROM users WHERE name = :name");
-    senderQuery.bindValue(":name", sender);
+    senderQuery.prepare("SELECT id FROM users WHERE email = :email");
+    senderQuery.bindValue(":email", sender);
 
     if (!senderQuery.exec() || !senderQuery.next()) {
+        qDebug() << "Sender not found:" << sender;
         return false; // Sender not found
     }
 
@@ -337,10 +338,11 @@ bool ChatDatabaseHandler::sendDirectMessage(const QString &sender, const QString
 
     // Get recipient ID
     QSqlQuery recipientQuery(db);
-    recipientQuery.prepare("SELECT id FROM users WHERE name = :name");
-    recipientQuery.bindValue(":name", recipient);
+    recipientQuery.prepare("SELECT id FROM users WHERE email = :email");
+    recipientQuery.bindValue(":email", recipient);
 
     if (!recipientQuery.exec() || !recipientQuery.next()) {
+        qDebug() << "Recipient not found:" << recipient;
         return false; // Recipient not found
     }
 
@@ -355,7 +357,12 @@ bool ChatDatabaseHandler::sendDirectMessage(const QString &sender, const QString
     messageQuery.bindValue(":content", content);
     messageQuery.bindValue(":timestamp", QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss"));
 
-    return messageQuery.exec();
+    if (!messageQuery.exec()) {
+        qDebug() << "Failed to insert message:" << messageQuery.lastError().text();
+        return false;
+    }
+
+    return true;
 }
 
 bool ChatDatabaseHandler::sendGroupMessage(const QString &sender, const QString &groupName,
