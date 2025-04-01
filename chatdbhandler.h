@@ -42,6 +42,7 @@ public:
     QList<QPair<QString, QString>> getGroupChatMembers(const QString &chatName);
     bool removeUserFromGroup(const QString &email, const QString &groupName);
     QPair<QString, QString> getGroupAdmin(const QString &groupId);
+    bool updateGroupName(const QString &oldName, const QString &newName);
 
     // Message operations
     bool sendDirectMessage(const QString &sender, const QString &recipient,

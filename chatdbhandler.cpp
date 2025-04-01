@@ -675,3 +675,19 @@ QPair<QString, QString> ChatDatabaseHandler::getGroupAdmin(const QString &groupI
     return QPair<QString, QString>(name, email);
 }
 
+bool ChatDatabaseHandler::updateGroupName(const QString &oldName, const QString &newName)
+{
+    if (!dbInitialized) return false;
+
+    QSqlQuery query(db);
+    query.prepare("UPDATE chat_groups SET name = :newName WHERE name = :oldName");
+    query.bindValue(":newName", newName);
+    query.bindValue(":oldName", oldName);
+
+    if (!query.exec()) {
+        qDebug() << "Failed to update group name:" << query.lastError().text();
+        return false;
+    }
+
+    return query.numRowsAffected() > 0;
+}

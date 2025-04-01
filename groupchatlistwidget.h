@@ -25,12 +25,14 @@ signals:
 
 private slots:
     void onGroupItemClicked(QListWidgetItem *item);
+    void onEditGroupNameClicked();
 
 private:
     void setupUI();
     void loadCreatedGroups();
     void loadJoinedGroups();
     void setupTabStyle();
+    void addGroupItemWithEditButton(const QString &groupId, const QString &groupName, int memberCount, QListWidget *listWidget);
 
     ChatDatabaseHandler &dbHandler;
     QString userEmail;
