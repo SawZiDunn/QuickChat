@@ -151,7 +151,7 @@ void MenuWidget::viewGroupChats() {
         stackedWidget->removeWidget(groupChatListWidget);
         delete groupChatListWidget;
     }
-    
+    qDebug() << "creating gp list widget";
     // Create new widget with current user
     groupChatListWidget = new GroupChatListWidget(dbHandler, currentUser.second, this);
     connect(groupChatListWidget, &GroupChatListWidget::backToMenuRequested, [this]() {

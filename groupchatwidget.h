@@ -35,6 +35,7 @@ public:
 
     void setGroupName(const QString &name);
     QString getGroupName() const;
+    void setGroupId(const QString &id) {groupId = id;}
     void setMembersList(const QStringList &members);
     void addMember(const QString &username);
     void removeMember(const QString &username);
@@ -75,6 +76,7 @@ private:
 
     QPair<QString, QString> currentUser; // Currently logged in user
     QString currentGroupName;
+    QString groupId;
     QString formatTimestamp(const QDateTime &timestamp);
 
     ChatDatabaseHandler &dbHandler;
