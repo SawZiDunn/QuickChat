@@ -22,6 +22,7 @@ qt_add_executable(QuickChat
     privatechatwidget.h privatechatwidget.cpp
     groupchatwidget.h groupchatwidget.cpp
     menuwidget.h menuwidget.cpp
+    groupchatlistwidget.h groupchatlistwidget.cpp
 )
 
 target_link_libraries(QuickChat
