@@ -29,7 +29,6 @@ public:
     // User operations
     QString loginUser(const QString &email, const QString &password);
     bool registerUser(const QString &username, const QString &email, const QString &password);
-    QStringList getAllUsers() const;
 
     // Chat group operations
     int createGroupChat(const QString &name, const QString &creatorEmail);
@@ -40,8 +39,9 @@ public:
     QList<std::tuple<QString, QString, int>> getGroupDetails(const QString &userEmail) const;  // Returns (id, name, member_count)
     bool userExists(const QString & email);
     QString groupChatExists(const QString & chatId);
-    QStringList getGroupChatMembers(const QString &chatName);
+    QList<QPair<QString, QString>> getGroupChatMembers(const QString &chatName);
     bool removeUserFromGroup(const QString &email, const QString &groupName);
+    QPair<QString, QString> getGroupAdmin(const QString &groupId);
 
     // Message operations
     bool sendDirectMessage(const QString &sender, const QString &recipient,

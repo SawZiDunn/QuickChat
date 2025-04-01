@@ -104,7 +104,7 @@ void MainWindow::setupWelcomePage()
     logoLabel->setAlignment(Qt::AlignCenter);
 
     // Add title
-    QLabel *titleLabel = new QLabel("Welcome to Quick Chat");
+    QLabel *titleLabel = new QLabel("Welcome to QuickChat");
     QFont titleFont = titleLabel->font();
     titleFont.setPointSize(24);
     titleFont.setBold(true);

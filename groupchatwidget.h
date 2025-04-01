@@ -36,7 +36,8 @@ public:
     void setGroupName(const QString &name);
     QString getGroupName() const;
     void setGroupId(const QString &id) {groupId = id;}
-    void setMembersList(const QStringList &members);
+    void setGroupAdmin(const QPair<QString, QString> & groupAdmin){this->groupAdmin = groupAdmin;}
+    void setMembersList();
     void addMember(const QString &username);
     void removeMember(const QString &username);
     void clearChatHistory();
@@ -45,8 +46,8 @@ public:
 
     void addIncomingMessage(const QString &sender, const QString &email, const QString &message, QDateTime msgTimestamp);
 
-
     void addOutgoingMessage(const QString &message, QDateTime msgTimestamp = QDateTime::currentDateTime());
+    void updateMembersHeader();
 
 signals:
     void backRequested();
@@ -56,6 +57,7 @@ private slots:
     void sendMessage();
     void showMembersMenu();
     void leaveChatRequested();
+    void handleMemberClicked(QListWidgetItem *item);
 
 private:
     void setupUI();
@@ -74,7 +76,8 @@ private:
     QMessageBox *confirmBox;
     QMessageBox *errorBox;
 
-    QPair<QString, QString> currentUser; // Currently logged in user
+    QPair<QString, QString> currentUser; // name, email
+    QPair<QString, QString> groupAdmin; // name, email
     QString currentGroupName;
     QString groupId;
     QString formatTimestamp(const QDateTime &timestamp);

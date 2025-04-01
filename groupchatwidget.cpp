@@ -6,6 +6,7 @@ GroupChatWidget::GroupChatWidget(ChatDatabaseHandler &dbHandler, QString groupId
     setupUI();
     setGroupId(groupId);
     setGroupName(dbHandler.groupChatExists(groupId));
+    setGroupAdmin(dbHandler.getGroupAdmin(groupId));
 
     // Load chat history
     setupConnections();
@@ -14,17 +15,16 @@ GroupChatWidget::GroupChatWidget(ChatDatabaseHandler &dbHandler, QString groupId
     // Setup auto-refresh timer
     refreshTimer = new QTimer(this);
     connect(refreshTimer, &QTimer::timeout, this, &GroupChatWidget::loadChatHistory);
+    connect(refreshTimer, &QTimer::timeout, this, &GroupChatWidget:: setMembersList);
     refreshTimer->start(8000); // Refresh every 8 seconds
 
-
-    // Get the, list of members for this group
-    QStringList members = dbHandler.getGroupChatMembers(currentGroupName);
-    setMembersList(members);
 
     // first - name, second -email
     if (!dbHandler.isGroupMember(currentUser.second, currentGroupName)) {
 
         // Add a system message about the user joining
+        QMessageBox::information(this, "Group Chat Joined",
+                                 "You have joined the group chat successfully.");
 
         dbHandler.joinGroupChat(currentUser.second, groupId);
         QString systemMessage = QString("%1 has joined the group chat.").arg(currentUser.first);
@@ -75,7 +75,14 @@ void GroupChatWidget::setupUI()
     membersButton = new QPushButton("Members");
     membersButton->setStyleSheet("QPushButton { background-color: #333; color: white; "
                                  "border-radius: 4px; padding: 6px 12px; } "
-                                 "QPushButton:hover { background-color: #444; }");
+                                 "QPushButton:hover { background-color: #444; }"
+                                 "QPushButton::menu-indicator {"
+                                 "    subcontrol-origin: padding;"
+                                 "    subcontrol-position: center right;" // This centers it vertically and places it at the right
+                                 "    right: 8px;" // Adjust this value to control horizontal positioning
+                                 "}"
+                                 );
+
 
     leaveChatButton = new QPushButton("Leave");
     leaveChatButton->setFixedWidth(70);
@@ -145,6 +152,7 @@ void GroupChatWidget::setupUI()
         "QMenu::item:selected { background-color: #2979ff; }");
     membersButton->setMenu(membersMenu);
 
+
     // Create the members list widget (shown in menu)
     membersListWidget = new QListWidget(this);
     membersListWidget->setStyleSheet(
@@ -175,6 +183,7 @@ void GroupChatWidget::setupConnections()
     connect(sendMessageButton, &QPushButton::clicked, this, &GroupChatWidget::sendMessage);
     connect(messageInputField, &QLineEdit::returnPressed, this, &GroupChatWidget::sendMessage);
     connect(membersButton, &QPushButton::clicked, this, &GroupChatWidget::showMembersMenu);
+    connect(membersListWidget, &QListWidget::itemClicked, this, &GroupChatWidget::handleMemberClicked);
 }
 
 void GroupChatWidget::showMembersMenu()
@@ -195,9 +204,13 @@ QString GroupChatWidget::getGroupName() const
     return currentGroupName;
 }
 
-void GroupChatWidget::setMembersList(const QStringList &members)
+void GroupChatWidget::setMembersList()
 {
     membersListWidget->clear();
+
+    // Get list of members for this group
+    // name, email
+    QList<QPair<QString, QString>> members = dbHandler.getGroupChatMembers(currentGroupName);
 
     // Add title/header
     QListWidgetItem *header = new QListWidgetItem("Group Members (" + QString::number(members.size()) + ")");
@@ -214,8 +227,12 @@ void GroupChatWidget::setMembersList(const QStringList &members)
     membersListWidget->setItemWidget(separator, new QFrame());
 
     // Add members
-    for (const QString &member : members) {
-        QListWidgetItem *item = new QListWidgetItem(QIcon(":/icons/user.png"), " " + member);
+    for (const auto &member : members) {
+        QListWidgetItem *item = new QListWidgetItem(QIcon(":/icons/user.png"), " " + member.first);
+
+        // Store the user email using a custom role (Qt::UserRole + 1)
+        item->setData(Qt::UserRole + 1, member.second);
+
         item->setSizeHint(QSize(item->sizeHint().width(), 30)); // Set consistent height
         membersListWidget->addItem(item);
     }
@@ -228,6 +245,7 @@ void GroupChatWidget::addMember(const QString &username)
 {
     QListWidgetItem *item = new QListWidgetItem(QIcon(":/icons/user.png"), username);
     membersListWidget->addItem(item);
+
     addSystemMessage(username + " joined the group");
 }
 
@@ -237,7 +255,10 @@ void GroupChatWidget::removeMember(const QString &username)
     for (QListWidgetItem* item : items) {
         delete membersListWidget->takeItem(membersListWidget->row(item));
     }
-    addSystemMessage(username + " left the group");
+    QString leaveMessage = currentUser.first + " removed " + username + " from the group.";
+    addSystemMessage(leaveMessage);
+    dbHandler.sendGroupMessage(currentUser.second, currentGroupName, leaveMessage, "system");
+
 }
 
 void GroupChatWidget::clearChatHistory()
@@ -424,10 +445,12 @@ void GroupChatWidget::leaveChatRequested()
         bool success = dbHandler.removeUserFromGroup(currentUser.second, currentGroupName);
 
         if (success) {
-            // Notify other users by adding a system message
-            QString leaveMessage = currentUser.first + " has left the group";
 
-            dbHandler.sendGroupMessage(currentUser.second, currentGroupName, leaveMessage, "system");
+            // Notify other users by adding a system message only if currentUser is in the group
+            if (dbHandler.isGroupMember(currentUser.second, currentGroupName)) {
+                QString leaveMessage = currentUser.first + " has left the group";
+                dbHandler.sendGroupMessage(currentUser.second, currentGroupName, leaveMessage, "system");
+            }
 
             // Emit signal to go back to the main menu or group list
             emit backRequested();
@@ -438,5 +461,61 @@ void GroupChatWidget::leaveChatRequested()
             errorBox.setIcon(QMessageBox::Warning);
             errorBox.exec();
         }
+    }
+}
+
+// slot
+void GroupChatWidget::handleMemberClicked(QListWidgetItem *item)
+{
+    // Skip if it's the header or separator
+    if (item->flags() == Qt::NoItemFlags || item->text().startsWith("Group Members"))
+        return;
+
+    // Extract username from the item text (remove the icon space)
+    QString memberName = item->text().trimmed();
+    QString memberEmail = item->data(Qt::UserRole + 1).toString();
+
+    // Skip if the clicked member is the current user
+    if (memberName == currentUser.first)
+        return;
+
+    // Only allow the creator to kick members
+    // check with email
+    if (currentUser.second == groupAdmin.second) {
+        QMessageBox confirmBox;
+        confirmBox.setWindowTitle("Kick Member");
+        confirmBox.setText("Do you want to remove " + memberName + " from the group?");
+        confirmBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+        confirmBox.setDefaultButton(QMessageBox::No);
+        confirmBox.setStyleSheet(
+            "QMessageBox { background-color: #333; color: #e0e0e0; }"
+            "QPushButton { background-color: #2979ff; color: white; "
+            "border-radius: 4px; padding: 6px 12px; margin: 5px; }"
+            "QPushButton:hover { background-color: #448aff; }");
+
+        int result = confirmBox.exec();
+
+        if (result == QMessageBox::Yes) {
+            // Remove the member
+            removeMember(memberName);
+
+            // Update the database
+            dbHandler.removeUserFromGroup(memberEmail, currentGroupName);
+
+            // Update the member count in the header
+            updateMembersHeader();
+        }
+    }
+}
+
+// update the header after removing a member
+void GroupChatWidget::updateMembersHeader()
+{
+    QList<QPair<QString, QString>> members = dbHandler.getGroupChatMembers(currentGroupName);
+
+    // Update the first item (header)
+    if (membersListWidget->count() > 0) {
+        QListWidgetItem *header = membersListWidget->item(0);
+        header->setText("Group Members (" + QString::number(members.size()) + ")");
     }
 }
