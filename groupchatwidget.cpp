@@ -4,6 +4,7 @@ GroupChatWidget::GroupChatWidget(ChatDatabaseHandler &dbHandler, QString groupId
     : QWidget(parent), dbHandler(dbHandler), currentUser(currentUser)
 {
     setupUI();
+    setGroupId(groupId);
     setGroupName(dbHandler.groupChatExists(groupId));
 
     // Load chat history
@@ -14,7 +15,6 @@ GroupChatWidget::GroupChatWidget(ChatDatabaseHandler &dbHandler, QString groupId
     refreshTimer = new QTimer(this);
     connect(refreshTimer, &QTimer::timeout, this, &GroupChatWidget::loadChatHistory);
     refreshTimer->start(8000); // Refresh every 8 seconds
-
 
 
     // Get the, list of members for this group
@@ -64,7 +64,7 @@ void GroupChatWidget::setupUI()
 
     backButton = new QPushButton("Back");
     backButton->setCursor(Qt::PointingHandCursor);
-    backButton->setStyleSheet("QPushButton { background-color: #2979ff; border-radius: 6px; } "
+    backButton->setStyleSheet("QPushButton { background-color: #2979ff; border-radius: 6px; padding: 6px 12px; } "
                               "QPushButton:hover { background-color: #448aff; }");
 
     groupNameLabel = new QLabel("Group Chat");
@@ -187,7 +187,7 @@ void GroupChatWidget::showMembersMenu()
 void GroupChatWidget::setGroupName(const QString &name)
 {
     currentGroupName = name;
-    groupNameLabel->setText("Group: " + name);
+    groupNameLabel->setText("Group Name: " + name + " - ID: #" + groupId);
 }
 
 QString GroupChatWidget::getGroupName() const
@@ -249,7 +249,7 @@ void GroupChatWidget::loadChatHistory()
 {
     clearChatHistory();
 
-    // Fetch messages with type
+    // Fetch messages
     QList<std::tuple<QString, QString, QString, QDateTime, QString>> messages =
         dbHandler.getGroupMessageHistory(currentGroupName, 50);
 
@@ -265,23 +265,7 @@ void GroupChatWidget::loadChatHistory()
         // Add date separator if it's a new day
         QString dateStr = timestamp.toString("yyyy-MM-dd");
         if (lastDate != dateStr) {
-            // Create a new cursor at the end
-            QTextCursor cursor = chatHistoryDisplay->textCursor();
-            cursor.movePosition(QTextCursor::End);
-            chatHistoryDisplay->setTextCursor(cursor);
-
-            // Create a block format with center alignment
-            QTextBlockFormat blockFormat;
-            blockFormat.setAlignment(Qt::AlignCenter);
-
-            // Apply the block format
-            cursor.insertBlock(blockFormat);
-
-            // Insert the date separator text with styling
-            cursor.insertHtml("<span style='color:#777777;'>--- " + dateStr + " ---</span>");
-
-            // Add another block with default alignment to reset formatting
-            cursor.insertBlock();
+            addSystemMessage("", timestamp);
 
             lastDate = dateStr;
         }
@@ -296,7 +280,7 @@ void GroupChatWidget::loadChatHistory()
             if (isCurrentUser) {
                 addOutgoingMessage(content, timestamp);
             } else {
-                addIncomingMessage(sender, senderEmail, content, timestamp); // Using sender as email temporarily
+                addIncomingMessage(sender, senderEmail, content, timestamp);
             }
         }
 
@@ -313,9 +297,7 @@ void GroupChatWidget::loadChatHistory()
 
 void GroupChatWidget::addSystemMessage(const QString &message, QDateTime msgTimestamp)
 {
-    // Format the timestamp for display
-    QString timestampStr = formatTimestamp(msgTimestamp);
-
+    QString html;
     // Create a text cursor at the end of the document
     QTextCursor cursor = chatHistoryDisplay->textCursor();
     cursor.movePosition(QTextCursor::End);
@@ -327,18 +309,30 @@ void GroupChatWidget::addSystemMessage(const QString &message, QDateTime msgTime
     // Apply the block format
     cursor.insertBlock(blockFormat);
 
-    // Create the HTML for the system message
-    QString html = "<div style='display: inline-block; background-color: #333; "
-                   "border-radius: 10px; padding: 3px 10px; margin: 2px 0;'>"
-                   "<span style='color:#9e9e9e;'>" + timestampStr +
-                   " — " + message + "</span></div><br>";
+    // for time divider
+    if (message != "")
+    {
+        // Format the timestamp for display
+        QString timestampStr = formatTimestamp(msgTimestamp);
 
-    // Insert the HTML at the cursor position
+        // Create the HTML for the system message
+        html = "<div style='display: inline-block; background-color: #333; "
+                       "border-radius: 10px; padding: 3px 10px; margin: 2px 0;'>"
+                       "<span style='color:#9e9e9e;'>" + timestampStr +
+                       " — " + message + "</span></div><br>";
+
+    } else { // for join, leave msg
+        QString dateStr = msgTimestamp.toString("yyyy-MM-dd");
+
+        // Create the HTML for the system message
+        html = "<div style='display: inline-block; background-color: #333; "
+                       "border-radius: 10px; padding: 3px 10px; margin: 2px 0;'>"
+                       "<span style='color:#9e9e9e;'>" + QString("---") + dateStr + QString("---") +  "</span></div><br>";
+
+    }
+
     cursor.insertHtml(html);
 
-    // Auto-scroll to bottom
-    QScrollBar *scrollbar = chatHistoryDisplay->verticalScrollBar();
-    scrollbar->setValue(scrollbar->maximum());
 }
 
 void GroupChatWidget::addIncomingMessage(const QString &sender, const QString &email, const QString &message, QDateTime msgTimestamp)
@@ -349,9 +343,9 @@ void GroupChatWidget::addIncomingMessage(const QString &sender, const QString &e
                                        "<div style='margin-bottom: 4px;'>"
                                        "<span style='color:#81c784; font-weight: bold; font-size: 13px;'>%1</span><br>"
                                        "<span style='color:#9e9e9e; font-size: 11px;'>%2</span>"
-                                       "</div>"
-                                       "<div style='color: #ffffff; font-size: 13px; line-height: 1.4;'>%3</div>"
-                                       "<div style='text-align: right; font-size: 10px; color: #888888; margin-top: 4px;'>%4</div>"
+                                       "</div><br>"
+                                       "<div style='color: #ffffff; font-size: 16px; line-height: 1.4; display: inline-block; max-width: 100%;'>%3</div>"
+                                       "<div style='text-align: left; font-size: 10px; color: #888888; margin-top: 4px;'>%4</div>"
                                        "</div>"
                                        "<div style='clear: both;'></div>"
                                        "</div>")
@@ -365,19 +359,19 @@ void GroupChatWidget::addOutgoingMessage(const QString &message, QDateTime msgTi
 {
     QString timestamp = formatTimestamp(msgTimestamp);
     chatHistoryDisplay->append(QString("<div style='margin: 16px 0; max-width: 70%; clear: both;'>"
-                                       "<div style='float: right; background-color: transparent; padding: 8px 12px; border-radius: 12px; border-bottom-right-radius: 4px;'>"
+                                       "<div style='float: left; background-color: transparent; padding: 8px 12px; border-radius: 12px; border-bottom-left-radius: 4px;'>"
                                        "<div style='margin-bottom: 4px;'>"
                                        "<span style='color:#90caf9; font-weight: bold; font-size: 13px;'>You</span><br>"
                                        "<span style='color:#bbdefb; font-size: 11px;'>%1</span>"
-                                       "</div>"
-                                       "<div style='color: #ffffff; font-size: 13px; line-height: 1.4;'>%2</div>"
-                                       "<div style='text-align: right; font-size: 10px; color: #bbdefb; margin-top: 4px;'>%3</div>"
+                                       "</div><br>"
+                                       "<div style='color: #ffffff; font-size: 16px; line-height: 1.4;'>%2</div>"
+                                       "<div style='text-align: left; font-size: 10px; color: #888888; margin-top: 4px;'>%3</div>"
                                        "</div>"
                                        "<div style='clear: both;'></div>"
                                        "</div>")
-                                   .arg(currentUser.second)
-                                   .arg(message)
-                                   .arg(timestamp));
+                                   .arg(currentUser.second).arg(message).arg(timestamp));
+
+
 }
 
 void GroupChatWidget::sendMessage()
