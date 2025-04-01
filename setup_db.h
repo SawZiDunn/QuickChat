@@ -151,7 +151,7 @@ int setup_chat_db()
 
         QString("INSERT INTO messages (sender_id, chatgroup_id, recipient_id, content, timestamp) "
                 "VALUES (2, 1, NULL, 'Hi Alice, how are you?', '%1');")
-            .arg(baseTime.addDays(60).toString("yyyy-MM-dd hh:mm:ss")),
+            .arg(baseTime.addSecs(60).toString("yyyy-MM-dd hh:mm:ss")),
 
         QString("INSERT INTO messages (sender_id, chatgroup_id, recipient_id, content, timestamp) "
                 "VALUES (3, 1, NULL, 'Welcome to the general chat!', '%1');")

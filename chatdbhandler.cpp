@@ -1,6 +1,5 @@
 // chatdbhandler.cpp
 #include "chatdbhandler.h"
-#include <QFile>
 
 ChatDatabaseHandler::ChatDatabaseHandler(QObject *parent)
     : QObject(parent), dbInitialized(false)
@@ -113,24 +112,6 @@ bool ChatDatabaseHandler::registerUser(const QString &username, const QString &e
     insertQuery.bindValue(":email", email);
     insertQuery.bindValue(":password", password); // In real app, hash passwords
     return insertQuery.exec();
-}
-
-QStringList ChatDatabaseHandler::getAllUsers() const
-{
-    QStringList users;
-
-    if (!dbInitialized) {
-        return users;
-    }
-
-    QSqlQuery query(db);
-    if (query.exec("SELECT name FROM users ORDER BY name")) {
-        while (query.next()) {
-            users << query.value(0).toString();
-        }
-    }
-
-    return users;
 }
 
 bool ChatDatabaseHandler::userExists(const QString & email) {
@@ -292,14 +273,14 @@ QStringList ChatDatabaseHandler::getUserGroups(const QString &userEmail) const
     return groups;
 }
 
-QStringList ChatDatabaseHandler::getGroupChatMembers(const QString &chatName) {
-    QStringList members;
+QList<QPair<QString, QString>> ChatDatabaseHandler::getGroupChatMembers(const QString &chatName) {
+    QList<QPair<QString, QString>> members;
     if (!dbInitialized) {
         return members;
     }
 
     QSqlQuery query(db);
-    query.prepare("SELECT u.name FROM users u "
+    query.prepare("SELECT u.name, u.email FROM users u "
                   "JOIN user_chat_groups ug ON u.id = ug.user_id "
                   "JOIN chat_groups cg ON ug.chatgroup_id = cg.id "
                   "WHERE cg.name = :chatName "
@@ -308,8 +289,9 @@ QStringList ChatDatabaseHandler::getGroupChatMembers(const QString &chatName) {
 
     if (query.exec()) {
         while (query.next()) {
-            members << query.value(0).toString();
-
+            QString name = query.value(0).toString();
+            QString email = query.value(1).toString();
+            members.append(QPair<QString, QString>(name, email));
         }
     } else {
         qDebug() << "Error fetching group members:" << query.lastError().text();
@@ -482,7 +464,6 @@ bool ChatDatabaseHandler::isGroupMember(const QString &email, const QString &gro
         return false;
     }
 
-    // qDebug() << "email" << email << "gp name: " << groupName;
 
     QSqlQuery query(db);
     query.prepare("SELECT user_id FROM user_chat_groups ucg "
@@ -663,3 +644,34 @@ QList<std::tuple<QString, QString, int>> ChatDatabaseHandler::getJoinedGroups(co
 
     return groups;
 }
+
+QPair<QString, QString> ChatDatabaseHandler::getGroupAdmin(const QString &groupId) {
+    QString name;
+    QString email;
+
+    if (!dbInitialized) {
+        return QPair<QString, QString>(name, email);
+    }
+
+    QSqlQuery query(db);
+    query.prepare(
+        "SELECT u.name, u.email FROM users u "
+        "JOIN chat_groups cg ON u.id = cg.created_by "
+        "WHERE cg.id = :groupId"
+        );
+    query.bindValue(":groupId", groupId);
+
+    if (query.exec()) {
+        if (query.next()) {  // Move to the first (and only) result row
+            name = query.value(0).toString();
+            email = query.value(1).toString();
+        } else {
+            qDebug() << "Admin not found for group:" << groupId;
+        }
+    } else {
+        qDebug() << "SQL Error:" << query.lastError().text();
+    }
+
+    return QPair<QString, QString>(name, email);
+}
+

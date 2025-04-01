@@ -75,7 +75,7 @@ private:
     // Data members
     QStackedWidget *stackedWidget;
     QMap<QString, QPair<QString, QString>> users; // Map of email -> (username, password)
-    QPair<QString, QString> currentUser; // Currently logged in user
+    QPair<QString, QString> currentUser; // Currently logged in user, (name, email)
     QStringList groupChats;
 
     GroupChatWidget *groupChat;

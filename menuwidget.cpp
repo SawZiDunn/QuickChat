@@ -57,8 +57,8 @@ void MenuWidget::setupUI()
 
     // Create buttons
     startPrivateChatButton = new QPushButton("Start Private Chat");
-    viewGroupChatsButton = new QPushButton("View Group Chats");
-    createGroupChatButton = new QPushButton("Create Group Chat");
+    viewGroupChatsButton = new QPushButton("Group Chats");
+    createGroupChatButton = new QPushButton("Create New Group");
     joinGroupChatButton = new QPushButton("Join Group Chat");
 
     // Style card buttons
@@ -163,7 +163,7 @@ void MenuWidget::viewGroupChats() {
 
 void MenuWidget::createGroupChat() {
     bool ok;
-    QString chatName = QInputDialog::getText(this, "Create Group Chat",
+    QString chatName = QInputDialog::getText(this, "Create New Group",
                                              "Enter a name for the new group chat:",
                                              QLineEdit::Normal, "", &ok);
 
@@ -217,8 +217,6 @@ void MenuWidget::joinGroupChat() {
             stackedWidget->addWidget(groupChatWidget);
             stackedWidget->setCurrentWidget(groupChatWidget);
 
-            QMessageBox::information(this, "Group Chat Joined",
-                                     "You have joined the group chat successfully.");
 
         } else {
             QMessageBox::warning(this, "Group Chat Not Found",
