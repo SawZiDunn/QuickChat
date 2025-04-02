@@ -691,3 +691,40 @@ bool ChatDatabaseHandler::updateGroupName(const QString &oldName, const QString 
 
     return query.numRowsAffected() > 0;
 }
+
+bool ChatDatabaseHandler::deleteGroup(const QString &groupId)
+{
+    QSqlDatabase::database().transaction();
+
+    // Delete group messages
+    QSqlQuery deleteMessages(QSqlDatabase::database());
+    deleteMessages.prepare("DELETE FROM messages WHERE chatgroup_id = :groupId");
+    deleteMessages.bindValue(":groupId", groupId);
+    if (!deleteMessages.exec()) {
+        QSqlDatabase::database().rollback();
+        qDebug() << "Failed to delete group messages:" << deleteMessages.lastError();
+        return false;
+    }
+
+    // Delete group memberships
+    QSqlQuery deleteMembers(QSqlDatabase::database());
+    deleteMembers.prepare("DELETE FROM user_chat_groups WHERE chatgroup_id = :groupId");
+    deleteMembers.bindValue(":groupId", groupId);
+    if (!deleteMembers.exec()) {
+        QSqlDatabase::database().rollback();
+        qDebug() << "Failed to delete group members:" << deleteMembers.lastError();
+        return false;
+    }
+
+    // Delete the group itself
+    QSqlQuery deleteGroup(QSqlDatabase::database());
+    deleteGroup.prepare("DELETE FROM chat_groups WHERE id = :groupId");
+    deleteGroup.bindValue(":groupId", groupId);
+    if (!deleteGroup.exec()) {
+        QSqlDatabase::database().rollback();
+        qDebug() << "Failed to delete group:" << deleteGroup.lastError();
+        return false;
+    }
+
+    return QSqlDatabase::database().commit();
+}

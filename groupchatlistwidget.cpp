@@ -241,7 +241,11 @@ void GroupChatListWidget::addGroupItemWithEditButton(const QString &groupId, con
     infoLayout->addWidget(detailsLabel);
     mainLayout->addLayout(infoLayout, 1);
 
-    // Right side - Edit button
+    // Right side - Edit and Delete buttons
+    QHBoxLayout *buttonLayout = new QHBoxLayout();
+    buttonLayout->setSpacing(5);
+    buttonLayout->setContentsMargins(0, 0, 0, 0);
+
     QPushButton *editButton = new QPushButton("Edit", itemWidget);
     editButton->setProperty("groupName", groupName);
     editButton->setCursor(Qt::PointingHandCursor);
@@ -260,9 +264,32 @@ void GroupChatListWidget::addGroupItemWithEditButton(const QString &groupId, con
         "   background-color: rgba(255, 255, 255, 0.2);"
         "}"
     );
-    mainLayout->addWidget(editButton);
+
+    QPushButton *deleteButton = new QPushButton("Delete", itemWidget);
+    deleteButton->setProperty("groupId", groupId);
+    deleteButton->setCursor(Qt::PointingHandCursor);
+    deleteButton->setFixedSize(35, 22);
+    deleteButton->setStyleSheet(
+        "QPushButton {"
+        "   background-color: rgba(255, 0, 0, 0.1);"
+        "   border-radius: 3px;"
+        "   padding: 0;"
+        "   color: #ffffff;"
+        "   font-size: 10px;"
+        "   border: none;"
+        "   margin: 0;"
+        "}"
+        "QPushButton:hover {"
+        "   background-color: rgba(255, 0, 0, 0.2);"
+        "}"
+    );
+
+    buttonLayout->addWidget(editButton);
+    buttonLayout->addWidget(deleteButton);
+    mainLayout->addLayout(buttonLayout);
 
     connect(editButton, &QPushButton::clicked, this, &GroupChatListWidget::onEditGroupNameClicked);
+    connect(deleteButton, &QPushButton::clicked, this, &GroupChatListWidget::onDeleteGroupClicked);
 
     QListWidgetItem *item = new QListWidgetItem(listWidget);
     item->setData(Qt::UserRole, groupId);
@@ -290,6 +317,29 @@ void GroupChatListWidget::onEditGroupNameClicked()
             refreshGroupLists();
         } else {
             QMessageBox::warning(this, "Error", "Failed to update group name.");
+        }
+    }
+}
+
+void GroupChatListWidget::onDeleteGroupClicked()
+{
+    QPushButton *deleteButton = qobject_cast<QPushButton*>(sender());
+    if (!deleteButton) return;
+
+    QString groupId = deleteButton->property("groupId").toString();
+    
+    QMessageBox::StandardButton reply = QMessageBox::question(
+        this, 
+        "Delete Group",
+        "Are you sure you want to delete this group?",
+        QMessageBox::Yes | QMessageBox::No
+    );
+
+    if (reply == QMessageBox::Yes) {
+        if (dbHandler.deleteGroup(groupId)) {
+            refreshGroupLists();
+        } else {
+            QMessageBox::critical(this, "Error", "Failed to delete the group.");
         }
     }
 }
