@@ -19,11 +19,9 @@ class PrivateChatWidget : public QWidget
     Q_OBJECT
 
 public:
-    PrivateChatWidget(const QString &currentUserEmail, const QString &recipientEmail, ChatDatabaseHandler &dbHandler, QWidget *parent=nullptr);
+    PrivateChatWidget(const QString &currentUserEmail, const QString &recipientEmail, const QString &recipientName, ChatDatabaseHandler &dbHandler, QWidget *parent=nullptr);
     ~PrivateChatWidget() = default;
 
-    void setChatPartner(const QString &partnerName, const QString &partnerEmail);
-    void setUserEmail(const QString &email);
     void clearChatHistory();
     void addSystemMessage(const QString &message);
     void addIncomingMessage(const QString &sender, const QString &email, const QString &message);
@@ -32,7 +30,6 @@ public:
 
 signals:
     void backToMenuRequested();
-    void messageSubmitted(const QString &message);
 
 private slots:
     void sendMessage();
@@ -54,6 +51,7 @@ private:
     // Data members
     QString userEmail;
     QString recipientEmail;
+    QString recipientName;
     ChatDatabaseHandler &dbHandler;
     QTimer *refreshTimer;
 };

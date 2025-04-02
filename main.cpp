@@ -6,7 +6,7 @@
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
-    setup_chat_db();
+    setup_chat_db(); // setup database
     MainWindow w;
 
     w.show();

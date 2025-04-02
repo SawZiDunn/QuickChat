@@ -75,12 +75,16 @@ private:
     QListWidget *membersListWidget;
     QMessageBox *confirmBox;
     QMessageBox *errorBox;
+    QPushButton *addMemberButton;
+
 
     QPair<QString, QString> currentUser; // name, email
     QPair<QString, QString> groupAdmin; // name, email
     QString currentGroupName;
     QString groupId;
     QString formatTimestamp(const QDateTime &timestamp);
+    void showAddMemberDialog();
+    void addNewMemberToGroup(const QString &userId);
 
     ChatDatabaseHandler &dbHandler;
     QTimer *refreshTimer;
