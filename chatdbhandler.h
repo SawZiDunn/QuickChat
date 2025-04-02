@@ -43,6 +43,7 @@ public:
     bool removeUserFromGroup(const QString &email, const QString &groupName);
     QPair<QString, QString> getGroupAdmin(const QString &groupId);
     bool updateGroupName(const QString &oldName, const QString &newName);
+    bool deleteGroup(const QString &groupId);
 
     // Message operations
     bool sendDirectMessage(const QString &sender, const QString &recipient,

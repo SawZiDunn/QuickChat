@@ -26,6 +26,7 @@ signals:
 private slots:
     void onGroupItemClicked(QListWidgetItem *item);
     void onEditGroupNameClicked();
+    void onDeleteGroupClicked();
 
 private:
     void setupUI();
