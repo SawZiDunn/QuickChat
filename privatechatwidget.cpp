@@ -2,12 +2,12 @@
 #include <QDateTime>
 #include <QTimer>
 
-PrivateChatWidget::PrivateChatWidget(const QString &currentUserEmail, const QString &recipientEmail, ChatDatabaseHandler &dbHandler, QWidget *parent)
-    : QWidget(parent), userEmail(currentUserEmail), recipientEmail(recipientEmail), dbHandler(dbHandler)
+PrivateChatWidget::PrivateChatWidget(const QString &currentUserEmail, const QString &recipientEmail, const QString &recipientName, ChatDatabaseHandler &dbHandler, QWidget *parent)
+    : QWidget(parent), userEmail(currentUserEmail), recipientEmail(recipientEmail), recipientName(recipientName), dbHandler(dbHandler)
 {
     setupUI();
     // Set the recipient's email in the UI
-    partnerNameLabel->setText(recipientEmail);
+    partnerNameLabel->setText(recipientName);
     partnerEmailLabel->setText(recipientEmail);
     loadChatHistory();
 
@@ -153,17 +153,6 @@ void PrivateChatWidget::setupUI()
     connect(chatHistoryDisplay->verticalScrollBar(), &QScrollBar::rangeChanged, this, &PrivateChatWidget::scrollToBottom);
 }
 
-void PrivateChatWidget::setChatPartner(const QString &partnerName, const QString &partnerEmail)
-{
-    partnerNameLabel->setText(partnerName);
-    partnerEmailLabel->setText(partnerEmail);
-}
-
-void PrivateChatWidget::setUserEmail(const QString &email)
-{
-    userEmail = email;
-}
-
 void PrivateChatWidget::clearChatHistory()
 {
     chatHistoryDisplay->clear();
@@ -230,7 +219,7 @@ void PrivateChatWidget::sendMessage()
     if (!message.isEmpty()) {
         // Save message to database
         if (dbHandler.sendDirectMessage(userEmail, recipientEmail, message)) {
-            emit messageSubmitted(message);
+
             addOutgoingMessage(message);
             messageInputField->clear();
         } else {

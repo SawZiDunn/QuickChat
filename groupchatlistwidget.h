@@ -35,6 +35,7 @@ private:
     void setupTabStyle();
     void addGroupItemWithEditButton(const QString &groupId, const QString &groupName, int memberCount, QListWidget *listWidget);
 
+
     ChatDatabaseHandler &dbHandler;
     QString userEmail;
     
@@ -44,6 +45,7 @@ private:
     QTabWidget *tabWidget;
     QListWidget *createdGroupsListWidget;
     QListWidget *joinedGroupsListWidget;
+
 };
 
 #endif // GROUPCHATLISTWIDGET_H

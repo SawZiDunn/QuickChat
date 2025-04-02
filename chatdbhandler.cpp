@@ -33,11 +33,6 @@ bool ChatDatabaseHandler::initialize()
     return true;
 }
 
-bool ChatDatabaseHandler::isInitialized() const
-{
-    return dbInitialized;
-}
-
 bool ChatDatabaseHandler::executeQuery(const QString &sql)
 {
     if (!dbInitialized) {
@@ -114,20 +109,20 @@ bool ChatDatabaseHandler::registerUser(const QString &username, const QString &e
     return insertQuery.exec();
 }
 
-bool ChatDatabaseHandler::userExists(const QString & email) {
+QString ChatDatabaseHandler::userExists(const QString & email) {
     if (!dbInitialized) {
-        return false;
+        return QString();
     }
 
     QSqlQuery query(db);
-    query.prepare("SELECT id FROM users WHERE email = :email");
+    query.prepare("SELECT name FROM users WHERE email = :email");
     query.bindValue(":email", email);
 
 
     if (query.exec() && query.next()) {
-        return true; // User exists with matching password
+        return query.value(0).toString(); // User exists with matching password
     }
-    return false;
+    return QString();
 
 }
 
@@ -350,6 +345,7 @@ bool ChatDatabaseHandler::sendDirectMessage(const QString &sender, const QString
 bool ChatDatabaseHandler::sendGroupMessage(const QString &sender, const QString &groupName,
                                            const QString &content, const QString &type)
 {
+
     if (!dbInitialized || content.isEmpty()) {
         return false;
     }
@@ -414,7 +410,7 @@ QList<std::tuple<QString, QString, QDateTime>> ChatDatabaseHandler::getDirectMes
             QString content = query.value(1).toString();
             QDateTime timestamp = query.value(2).toDateTime();
             
-            qDebug() << "Found message:" << sender << content << timestamp; // Debug line
+
             messages.append(std::make_tuple(sender, content, timestamp));
         }
         // Reverse to get chronological order
@@ -588,7 +584,7 @@ QList<std::tuple<QString, QString, int>> ChatDatabaseHandler::getCreatedGroups(c
                 query.value(2).toInt()
             ));
         }
-        qDebug() << "Created groups for" << userEmail << ":" << groups.size() << "groups found";
+        // qDebug() << "Created groups for" << userEmail << ":" << groups.size() << "groups found";
     } else {
         qDebug() << "Error in getCreatedGroups:" << query.lastError().text();
         qDebug() << "Query:" << query.lastQuery();

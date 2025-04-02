@@ -17,18 +17,12 @@
 #include "groupchatwidget.h"
 #include "privatechatwidget.h"
 #include "groupchatlistwidget.h"
-// Structure to store chat request information
-struct ChatRequest {
-    QString fromUser;
-    QString toUser;
-    bool pending;
-};
 
 class MenuWidget : public QWidget
 {
     Q_OBJECT
 public:
-    MenuWidget(QStackedWidget *stackedWidget, QWidget *parent = nullptr);
+    MenuWidget(ChatDatabaseHandler& dbHandler, QStackedWidget *stackedWidget, QWidget *parent = nullptr);
     ~MenuWidget() = default;
 
     // void setUsername(const QString &username);
@@ -61,17 +55,6 @@ private:
     QPushButton *joinGroupChatButton;
     QPushButton *logoutButton;
 
-
-    // Chat request management
-    QList<ChatRequest> chatRequests;
-    QTimer *requestCheckTimer;
-    void setupPrivateChatPage();
-    void checkPendingRequests();
-    void sendChatRequest(const QString &toUser);
-    void acceptChatRequest(const ChatRequest &request);
-    void rejectChatRequest(const ChatRequest &request);
-    void openPrivateChat(const QString &otherUrse);
-
     // Data members
     QStackedWidget *stackedWidget;
     QMap<QString, QPair<QString, QString>> users; // Map of email -> (username, password)
@@ -82,7 +65,7 @@ private:
     GroupChatListWidget *groupChatListWidget;
 
     // Add the database handler
-    ChatDatabaseHandler dbHandler;
+    ChatDatabaseHandler &dbHandler;
 };
 
 #endif // MENUWIDGET_H

@@ -26,7 +26,7 @@ MainWindow::MainWindow(QWidget *parent)
     setupLoginPage();
     setupRegisterPage();
 
-    menuWidget = new MenuWidget(stackedWidget);
+    menuWidget = new MenuWidget(dbHandler, stackedWidget);
 
     stackedWidget->addWidget(menuWidget);
 
@@ -403,7 +403,6 @@ void MainWindow::performRegistration()
 
     // Register user in the database
     if (dbHandler.registerUser(username, email, password)) {
-        // You might want to save the email as well - see suggestion below
         QMessageBox::information(this, "Registration Successful",
                                  "Account created successfully! You can now login.");
         // Switch to login page

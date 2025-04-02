@@ -5,8 +5,8 @@
 #include <QInputDialog>
 #include <QMessageBox>
 
-MenuWidget::MenuWidget(QStackedWidget *stackedWidget, QWidget *parent)
-    : QWidget(parent), stackedWidget(stackedWidget)
+MenuWidget::MenuWidget(ChatDatabaseHandler& dbHandler, QStackedWidget *stackedWidget, QWidget *parent)
+    : QWidget(parent), stackedWidget(stackedWidget), dbHandler(dbHandler)
 {
 
     setupUI();
@@ -16,8 +16,6 @@ void MenuWidget::setupUI()
 {
     // Create layout
     QVBoxLayout *layout = new QVBoxLayout(this);
-
-
 
     // Add title
     titleLabel = new QLabel("Main Menu");
@@ -106,10 +104,6 @@ void MenuWidget::setupUI()
     layout->addWidget(logoutButton, 0, Qt::AlignCenter);
     layout->addStretch();
 
-    // Initialize the database
-    if (!dbHandler.initialize()) {
-        QMessageBox::critical(this, "Database Error", "Failed to initialize the database connection.");
-    }
 }
 
 void MenuWidget::startPrivateChat() {
@@ -119,9 +113,10 @@ void MenuWidget::startPrivateChat() {
                                            QLineEdit::Normal, "", &ok);
 
     if (ok && !userEmail.isEmpty()) {
-        if (dbHandler.userExists(userEmail)) {
+        QString userName = dbHandler.userExists(userEmail);
+        if (userName != "") {
             // Pass the database handler reference
-            PrivateChatWidget* privateChatWidget = new PrivateChatWidget(currentUser.second, userEmail, dbHandler, this);
+            PrivateChatWidget* privateChatWidget = new PrivateChatWidget(currentUser.second, userEmail, userName, dbHandler, this);
 
             // Connect the back button signal
             connect(privateChatWidget, &PrivateChatWidget::backToMenuRequested, this, [this, privateChatWidget]() {
