@@ -139,14 +139,13 @@ void MenuWidget::startPrivateChat() {
 }
 
 
-
 void MenuWidget::viewGroupChats() {
     // Delete existing widget if it exists
     if (groupChatListWidget) {
         stackedWidget->removeWidget(groupChatListWidget);
         delete groupChatListWidget;
     }
-    qDebug() << "creating gp list widget";
+
     // Create new widget with current user
     groupChatListWidget = new GroupChatListWidget(dbHandler, currentUser.second, this);
     
@@ -157,10 +156,10 @@ void MenuWidget::viewGroupChats() {
     
     // Connect group chat selection signal
     connect(groupChatListWidget, &GroupChatListWidget::groupChatSelected, 
-            [this](const QString &groupId, const QString &groupName) {
+            [this](const QString &groupId) {
+
         // Create and set up the group chat widget
         GroupChatWidget* groupChatWidget = new GroupChatWidget(dbHandler, groupId, currentUser, this);
-        groupChatWidget->setGroupName(groupName);
         
         // Connect the back button signal
         connect(groupChatWidget, &GroupChatWidget::backRequested, this, [this, groupChatWidget]() {
@@ -218,7 +217,6 @@ void MenuWidget::joinGroupChat() {
             // Create and set up the GroupChatWidget
 
             GroupChatWidget* groupChatWidget = new GroupChatWidget(dbHandler, chatId, currentUser, this);
-
 
             // Connect the back button signal
             connect(groupChatWidget, &GroupChatWidget::backRequested, this, [this, groupChatWidget]() {
