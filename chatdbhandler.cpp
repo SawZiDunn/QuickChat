@@ -342,7 +342,7 @@ bool ChatDatabaseHandler::sendDirectMessage(const QString &sender, const QString
     return true;
 }
 
-bool ChatDatabaseHandler::sendGroupMessage(const QString &sender, const QString &groupName,
+bool ChatDatabaseHandler::sendGroupMessage(const QString &sender, const QString &groupId,
                                            const QString &content, const QString &type)
 {
 
@@ -361,27 +361,37 @@ bool ChatDatabaseHandler::sendGroupMessage(const QString &sender, const QString 
     }
     int senderId = senderQuery.value(0).toInt();
 
-    // Get group ID
-    QSqlQuery groupQuery(db);
-    groupQuery.prepare("SELECT id FROM chat_groups WHERE name = :name");
-    groupQuery.bindValue(":name", groupName);
-    if (!groupQuery.exec() || !groupQuery.next()) {
-        qDebug() << "gpnot found";
-        return false; // Group not found
-
+    // Get group ID - now using id directly if it's a number, otherwise query by name
+    int groupIdInt;
+    bool isNumber;
+    groupIdInt = groupId.toInt(&isNumber);
+    
+    if (!isNumber) {
+        QSqlQuery groupQuery(db);
+        groupQuery.prepare("SELECT id FROM chat_groups WHERE name = :name");
+        groupQuery.bindValue(":name", groupId);
+        if (!groupQuery.exec() || !groupQuery.next()) {
+            qDebug() << "group not found:" << groupId;
+            return false; // Group not found
+        }
+        groupIdInt = groupQuery.value(0).toInt();
     }
-    int groupId = groupQuery.value(0).toInt();
 
     // Send message
     QSqlQuery messageQuery(db);
     messageQuery.prepare("INSERT INTO messages (sender_id, chatgroup_id, recipient_id, content, timestamp, type) "
                          "VALUES (:sender_id, :group_id, NULL, :content, :timestamp, :type)");
     messageQuery.bindValue(":sender_id", senderId);
-    messageQuery.bindValue(":group_id", groupId);
+    messageQuery.bindValue(":group_id", groupIdInt);
     messageQuery.bindValue(":content", content);
     messageQuery.bindValue(":timestamp", QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss"));
     messageQuery.bindValue(":type", type);
-    return messageQuery.exec();
+    
+    if (!messageQuery.exec()) {
+        qDebug() << "Failed to send message:" << messageQuery.lastError().text();
+        return false;
+    }
+    return true;
 }
 
 // Using std::tuple

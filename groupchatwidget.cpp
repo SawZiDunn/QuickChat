@@ -411,8 +411,8 @@ void GroupChatWidget::sendMessage()
         QString message = messageInputField->text();
         messageInputField->clear();
 
-        // Save to database
-        bool success = dbHandler.sendGroupMessage(currentUser.second, currentGroupName, message);
+        // Save to database with message type 'user', using groupId instead of name
+        bool success = dbHandler.sendGroupMessage(currentUser.second, groupId, message, "user");
 
         if (success) {
             // Add to UI only after successful database insertion
