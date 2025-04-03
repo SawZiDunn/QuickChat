@@ -385,15 +385,15 @@ bool ChatDatabaseHandler::sendGroupMessage(const QString &sender, const QString 
 }
 
 // Using std::tuple
-QList<std::tuple<QString, QString, QDateTime>> ChatDatabaseHandler::getDirectMessageHistory(const QString &user1, const QString &user2, int limit)
+QList<std::tuple<QString, QString, QString, QDateTime>> ChatDatabaseHandler::getDirectMessageHistory(const QString &user1, const QString &user2, int limit)
 {
-    QList<std::tuple<QString, QString, QDateTime>> messages;
+    QList<std::tuple<QString, QString, QString, QDateTime>> messages;
     if (!dbInitialized) {
         return messages;
     }
 
     QSqlQuery query(db);
-    query.prepare("SELECT u.email, m.content, m.timestamp FROM messages m "
+    query.prepare("SELECT u.name, u.email, m.content, m.timestamp FROM messages m "
                   "JOIN users u ON m.sender_id = u.id "
                   "WHERE (m.sender_id = (SELECT id FROM users WHERE email = :user1) AND "
                   "       m.recipient_id = (SELECT id FROM users WHERE email = :user2)) OR "
@@ -406,12 +406,12 @@ QList<std::tuple<QString, QString, QDateTime>> ChatDatabaseHandler::getDirectMes
 
     if (query.exec()) {
         while (query.next()) {
-            QString sender = query.value(0).toString();
-            QString content = query.value(1).toString();
-            QDateTime timestamp = query.value(2).toDateTime();
-            
+            QString senderName = query.value(0).toString();
+            QString senderEmail = query.value(1).toString();
+            QString content = query.value(2).toString();
+            QDateTime timestamp = query.value(3).toDateTime();
 
-            messages.append(std::make_tuple(sender, content, timestamp));
+            messages.append(std::make_tuple(senderName, senderEmail, content, timestamp));
         }
         // Reverse to get chronological order
         std::reverse(messages.begin(), messages.end());

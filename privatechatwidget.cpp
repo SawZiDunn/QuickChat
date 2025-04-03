@@ -241,19 +241,20 @@ void PrivateChatWidget::loadChatHistory()
     chatHistoryDisplay->clear();
 
     // Get chat history
-    QList<std::tuple<QString, QString, QDateTime>> messages =
+    QList<std::tuple<QString, QString, QString, QDateTime>> messages =
         dbHandler.getDirectMessageHistory(userEmail, recipientEmail, 50);
 
     // Display messages in UI
     for (const auto &message : messages) {
-        const QString &sender = std::get<0>(message);
-        const QString &content = std::get<1>(message);
-        const QDateTime &timestamp = std::get<2>(message);
+        const QString &senderName = std::get<0>(message);
+        const QString &senderEmail = std::get<1>(message);
+        const QString &content = std::get<2>(message);
+        const QDateTime &timestamp = std::get<3>(message);
 
-        if (sender == userEmail) {
+        if (senderEmail == userEmail) {
             addOutgoingMessage(content, timestamp);
         } else {
-            addIncomingMessage(sender, recipientEmail, content, timestamp);
+            addIncomingMessage(senderName, senderEmail, content, timestamp);
         }
     }
 
