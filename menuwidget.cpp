@@ -141,10 +141,10 @@ void MenuWidget::startPrivateChat() {
 
 void MenuWidget::viewGroupChats() {
     // Delete existing widget if it exists
-    if (groupChatListWidget) {
-        stackedWidget->removeWidget(groupChatListWidget);
-        delete groupChatListWidget;
-    }
+    // if (groupChatListWidget) {
+    //     stackedWidget->removeWidget(groupChatListWidget);
+    //     delete groupChatListWidget;
+    // }
 
     // Create new widget with current user
     groupChatListWidget = new GroupChatListWidget(dbHandler, currentUser.second, this);
