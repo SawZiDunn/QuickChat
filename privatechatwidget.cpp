@@ -160,7 +160,14 @@ void PrivateChatWidget::clearChatHistory()
 
 QString PrivateChatWidget::formatTimestamp(const QDateTime &timestamp)
 {
-    return timestamp.toString("hh:mm AP");
+    QDateTime now = QDateTime::currentDateTime();
+    if (timestamp.date() == now.date()) {
+        return timestamp.toString("hh:mm AP");
+    } else if (timestamp.date().year() == now.date().year()) {
+        return timestamp.toString("MMM d, hh:mm AP");
+    } else {
+        return timestamp.toString("MMM d yyyy, hh:mm AP");
+    }
 }
 
 void PrivateChatWidget::addSystemMessage(const QString &message)
@@ -174,43 +181,43 @@ void PrivateChatWidget::addSystemMessage(const QString &message)
                                    .arg(message));
 }
 
-void PrivateChatWidget::addIncomingMessage(const QString &sender, const QString &email, const QString &message)
+void PrivateChatWidget::addIncomingMessage(const QString &sender, const QString &email, const QString &message, const QDateTime &timestamp)
 {
-    QString timestamp = formatTimestamp(QDateTime::currentDateTime());
+    QString formattedTimestamp = formatTimestamp(timestamp);
     chatHistoryDisplay->append(QString("<div style='margin: 16px 0; max-width: 70%; clear: both;'>"
-                                       "<div style='float: left; background-color: transparent; padding: 8px 12px; border-radius: 12px; border-bottom-left-radius: 4px;'>"
-                                       "<div style='margin-bottom: 4px;'>"
-                                       "<span style='color:#81c784; font-weight: bold; font-size: 13px;'>%1</span><br>"
-                                       "<span style='color:#9e9e9e; font-size: 11px;'>%2</span>"
-                                       "</div>"
-                                       "<div style='color: #ffffff; font-size: 13px; line-height: 1.4;'>%3</div>"
-                                       "<div style='text-align: right; font-size: 10px; color: #888888; margin-top: 4px;'>%4</div>"
-                                       "</div>"
-                                       "<div style='clear: both;'></div>"
-                                       "</div>")
-                                   .arg(sender)
-                                   .arg(email)
-                                   .arg(message)
-                                   .arg(timestamp));
+                                     "<div style='float: left; background-color: transparent; padding: 8px 12px; border-radius: 12px; border-bottom-left-radius: 4px;'>"
+                                     "<div style='margin-bottom: 4px;'>"
+                                     "<span style='color:#81c784; font-weight: bold; font-size: 13px;'>%1</span><br>"
+                                     "<span style='color:#9e9e9e; font-size: 11px;'>%2</span>"
+                                     "</div>"
+                                     "<div style='color: #ffffff; font-size: 13px; line-height: 1.4;'>%3</div>"
+                                     "<div style='text-align: right; font-size: 10px; color: #888888; margin-top: 4px;'>%4</div>"
+                                     "</div>"
+                                     "<div style='clear: both;'></div>"
+                                     "</div>")
+                                 .arg(sender)
+                                 .arg(email)
+                                 .arg(message)
+                                 .arg(formattedTimestamp));
 }
 
-void PrivateChatWidget::addOutgoingMessage(const QString &message)
+void PrivateChatWidget::addOutgoingMessage(const QString &message, const QDateTime &timestamp)
 {
-    QString timestamp = formatTimestamp(QDateTime::currentDateTime());
+    QString formattedTimestamp = formatTimestamp(timestamp);
     chatHistoryDisplay->append(QString("<div style='margin: 16px 0; max-width: 70%; clear: both;'>"
-                                       "<div style='float: right; background-color: transparent; padding: 8px 12px; border-radius: 12px; border-bottom-right-radius: 4px;'>"
-                                       "<div style='margin-bottom: 4px;'>"
-                                       "<span style='color:#90caf9; font-weight: bold; font-size: 13px;'>You</span><br>"
-                                       "<span style='color:#bbdefb; font-size: 11px;'>%1</span>"
-                                       "</div>"
-                                       "<div style='color: #ffffff; font-size: 13px; line-height: 1.4;'>%2</div>"
-                                       "<div style='text-align: right; font-size: 10px; color: #bbdefb; margin-top: 4px;'>%3</div>"
-                                       "</div>"
-                                       "<div style='clear: both;'></div>"
-                                       "</div>")
-                                   .arg(userEmail)
-                                   .arg(message)
-                                   .arg(timestamp));
+                                     "<div style='float: right; background-color: transparent; padding: 8px 12px; border-radius: 12px; border-bottom-right-radius: 4px;'>"
+                                     "<div style='margin-bottom: 4px;'>"
+                                     "<span style='color:#90caf9; font-weight: bold; font-size: 13px;'>You</span><br>"
+                                     "<span style='color:#bbdefb; font-size: 11px;'>%1</span>"
+                                     "</div>"
+                                     "<div style='color: #ffffff; font-size: 13px; line-height: 1.4;'>%2</div>"
+                                     "<div style='text-align: right; font-size: 10px; color: #bbdefb; margin-top: 4px;'>%3</div>"
+                                     "</div>"
+                                     "<div style='clear: both;'></div>"
+                                     "</div>")
+                                 .arg(userEmail)
+                                 .arg(message)
+                                 .arg(formattedTimestamp));
 }
 
 void PrivateChatWidget::sendMessage()
@@ -220,7 +227,7 @@ void PrivateChatWidget::sendMessage()
         // Save message to database
         if (dbHandler.sendDirectMessage(userEmail, recipientEmail, message)) {
 
-            addOutgoingMessage(message);
+            addOutgoingMessage(message, QDateTime::currentDateTime());
             messageInputField->clear();
         } else {
             addSystemMessage("Failed to send message. Please try again.");
@@ -244,9 +251,9 @@ void PrivateChatWidget::loadChatHistory()
         const QDateTime &timestamp = std::get<2>(message);
 
         if (sender == userEmail) {
-            addOutgoingMessage(content);
+            addOutgoingMessage(content, timestamp);
         } else {
-            addIncomingMessage(sender, recipientEmail, content);
+            addIncomingMessage(sender, recipientEmail, content, timestamp);
         }
     }
 
