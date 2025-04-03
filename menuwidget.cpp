@@ -149,9 +149,31 @@ void MenuWidget::viewGroupChats() {
     qDebug() << "creating gp list widget";
     // Create new widget with current user
     groupChatListWidget = new GroupChatListWidget(dbHandler, currentUser.second, this);
+    
+    // Connect back button signal
     connect(groupChatListWidget, &GroupChatListWidget::backToMenuRequested, [this]() {
         stackedWidget->setCurrentWidget(this);
     });
+    
+    // Connect group chat selection signal
+    connect(groupChatListWidget, &GroupChatListWidget::groupChatSelected, 
+            [this](const QString &groupId, const QString &groupName) {
+        // Create and set up the group chat widget
+        GroupChatWidget* groupChatWidget = new GroupChatWidget(dbHandler, groupId, currentUser, this);
+        groupChatWidget->setGroupName(groupName);
+        
+        // Connect the back button signal
+        connect(groupChatWidget, &GroupChatWidget::backRequested, this, [this, groupChatWidget]() {
+            // Switch back to group list widget
+            stackedWidget->setCurrentWidget(groupChatListWidget);
+            groupChatWidget->deleteLater();
+        });
+        
+        // Add and show the group chat widget
+        stackedWidget->addWidget(groupChatWidget);
+        stackedWidget->setCurrentWidget(groupChatWidget);
+    });
+    
     stackedWidget->addWidget(groupChatListWidget);
     stackedWidget->setCurrentWidget(groupChatListWidget);
 }

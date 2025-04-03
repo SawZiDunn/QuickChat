@@ -342,7 +342,7 @@ bool ChatDatabaseHandler::sendDirectMessage(const QString &sender, const QString
     return true;
 }
 
-bool ChatDatabaseHandler::sendGroupMessage(const QString &sender, const QString &groupName,
+bool ChatDatabaseHandler::sendGroupMessage(const QString &sender, const QString &groupId,
                                            const QString &content, const QString &type)
 {
 
@@ -361,39 +361,49 @@ bool ChatDatabaseHandler::sendGroupMessage(const QString &sender, const QString 
     }
     int senderId = senderQuery.value(0).toInt();
 
-    // Get group ID
-    QSqlQuery groupQuery(db);
-    groupQuery.prepare("SELECT id FROM chat_groups WHERE name = :name");
-    groupQuery.bindValue(":name", groupName);
-    if (!groupQuery.exec() || !groupQuery.next()) {
-        qDebug() << "gpnot found";
-        return false; // Group not found
-
+    // Get group ID - now using id directly if it's a number, otherwise query by name
+    int groupIdInt;
+    bool isNumber;
+    groupIdInt = groupId.toInt(&isNumber);
+    
+    if (!isNumber) {
+        QSqlQuery groupQuery(db);
+        groupQuery.prepare("SELECT id FROM chat_groups WHERE name = :name");
+        groupQuery.bindValue(":name", groupId);
+        if (!groupQuery.exec() || !groupQuery.next()) {
+            qDebug() << "group not found:" << groupId;
+            return false; // Group not found
+        }
+        groupIdInt = groupQuery.value(0).toInt();
     }
-    int groupId = groupQuery.value(0).toInt();
 
     // Send message
     QSqlQuery messageQuery(db);
     messageQuery.prepare("INSERT INTO messages (sender_id, chatgroup_id, recipient_id, content, timestamp, type) "
                          "VALUES (:sender_id, :group_id, NULL, :content, :timestamp, :type)");
     messageQuery.bindValue(":sender_id", senderId);
-    messageQuery.bindValue(":group_id", groupId);
+    messageQuery.bindValue(":group_id", groupIdInt);
     messageQuery.bindValue(":content", content);
     messageQuery.bindValue(":timestamp", QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss"));
     messageQuery.bindValue(":type", type);
-    return messageQuery.exec();
+    
+    if (!messageQuery.exec()) {
+        qDebug() << "Failed to send message:" << messageQuery.lastError().text();
+        return false;
+    }
+    return true;
 }
 
 // Using std::tuple
-QList<std::tuple<QString, QString, QDateTime>> ChatDatabaseHandler::getDirectMessageHistory(const QString &user1, const QString &user2, int limit)
+QList<std::tuple<QString, QString, QString, QDateTime>> ChatDatabaseHandler::getDirectMessageHistory(const QString &user1, const QString &user2, int limit)
 {
-    QList<std::tuple<QString, QString, QDateTime>> messages;
+    QList<std::tuple<QString, QString, QString, QDateTime>> messages;
     if (!dbInitialized) {
         return messages;
     }
 
     QSqlQuery query(db);
-    query.prepare("SELECT u.email, m.content, m.timestamp FROM messages m "
+    query.prepare("SELECT u.name, u.email, m.content, m.timestamp FROM messages m "
                   "JOIN users u ON m.sender_id = u.id "
                   "WHERE (m.sender_id = (SELECT id FROM users WHERE email = :user1) AND "
                   "       m.recipient_id = (SELECT id FROM users WHERE email = :user2)) OR "
@@ -406,12 +416,12 @@ QList<std::tuple<QString, QString, QDateTime>> ChatDatabaseHandler::getDirectMes
 
     if (query.exec()) {
         while (query.next()) {
-            QString sender = query.value(0).toString();
-            QString content = query.value(1).toString();
-            QDateTime timestamp = query.value(2).toDateTime();
-            
+            QString senderName = query.value(0).toString();
+            QString senderEmail = query.value(1).toString();
+            QString content = query.value(2).toString();
+            QDateTime timestamp = query.value(3).toDateTime();
 
-            messages.append(std::make_tuple(sender, content, timestamp));
+            messages.append(std::make_tuple(senderName, senderEmail, content, timestamp));
         }
         // Reverse to get chronological order
         std::reverse(messages.begin(), messages.end());

@@ -46,12 +46,11 @@ public:
     bool isGroupMember(const QString &email, const QString &groupName);
 
     // Message operations
-    bool sendDirectMessage(const QString &sender, const QString &recipient,
-                           const QString &content);
-    bool sendGroupMessage(const QString &sender, const QString &groupName,
-                          const QString &content, const QString &type = "message");
+    bool sendDirectMessage(const QString &sender, const QString &recipient, const QString &content);
+    bool sendGroupMessage(const QString &sender, const QString &groupName, const QString &content, const QString &type = "text");
 
-    QList<std::tuple<QString, QString, QDateTime>> getDirectMessageHistory(const QString &user1, const QString &user2, int limit);
+    // Using std::tuple<sender_name, sender_email, content, timestamp>
+    QList<std::tuple<QString, QString, QString, QDateTime>> getDirectMessageHistory(const QString &user1, const QString &user2, int limit);
     QList<std::tuple<QString, QString, QString, QDateTime, QString>> getGroupMessageHistory(const QString &groupName, int limit);
 
 

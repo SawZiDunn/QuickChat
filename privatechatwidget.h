@@ -24,8 +24,8 @@ public:
 
     void clearChatHistory();
     void addSystemMessage(const QString &message);
-    void addIncomingMessage(const QString &sender, const QString &email, const QString &message);
-    void addOutgoingMessage(const QString &message);
+    void addIncomingMessage(const QString &sender, const QString &email, const QString &message, const QDateTime &timestamp = QDateTime::currentDateTime());
+    void addOutgoingMessage(const QString &message, const QDateTime &timestamp = QDateTime::currentDateTime());
     void loadChatHistory();
 
 signals:

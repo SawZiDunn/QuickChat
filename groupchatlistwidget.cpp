@@ -96,6 +96,9 @@ void GroupChatListWidget::setupUI()
         "   margin: 5px;"
         "   color: #ffffff;"
         "}" 
+        "QListWidget::item:hover {"
+        "   background-color: rgba(74, 74, 74, 0.7);"
+        "}"
     );
 
     // Connect signals
@@ -204,7 +207,11 @@ void GroupChatListWidget::addGroupItemWithEditButton(const QString &groupId, con
         "   background-color: #404040;"
         "   border-radius: 8px;"
         "}"
+        "QWidget:hover {"
+        "   background-color: #505050;"
+        "}"
     );
+    itemWidget->setCursor(Qt::PointingHandCursor);
     
     QHBoxLayout *mainLayout = new QHBoxLayout(itemWidget);
     mainLayout->setContentsMargins(15, 5, 15, 5);
@@ -293,6 +300,7 @@ void GroupChatListWidget::addGroupItemWithEditButton(const QString &groupId, con
 
     QListWidgetItem *item = new QListWidgetItem(listWidget);
     item->setData(Qt::UserRole, groupId);
+    item->setData(Qt::DisplayRole, groupName);  // Store the group name
     item->setSizeHint(QSize(itemWidget->sizeHint().width(), 50));  // Fixed height
     listWidget->addItem(item);
     listWidget->setItemWidget(item, itemWidget);
@@ -353,6 +361,6 @@ void GroupChatListWidget::refreshGroupLists()
 void GroupChatListWidget::onGroupItemClicked(QListWidgetItem *item)
 {
     QString groupId = item->data(Qt::UserRole).toString();
-    QString groupName = item->text();
+    QString groupName = item->data(Qt::DisplayRole).toString();
     emit groupChatSelected(groupId, groupName);
 }
