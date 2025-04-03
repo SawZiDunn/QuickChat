@@ -361,6 +361,5 @@ void GroupChatListWidget::refreshGroupLists()
 void GroupChatListWidget::onGroupItemClicked(QListWidgetItem *item)
 {
     QString groupId = item->data(Qt::UserRole).toString();
-    QString groupName = item->data(Qt::DisplayRole).toString();
-    emit groupChatSelected(groupId, groupName);
+    emit groupChatSelected(groupId);
 }

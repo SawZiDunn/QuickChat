@@ -21,7 +21,7 @@ public:
 
 signals:
     void backToMenuRequested();
-    void groupChatSelected(const QString &groupId, const QString &groupName);
+    void groupChatSelected(const QString &groupId);
 
 private slots:
     void onGroupItemClicked(QListWidgetItem *item);
