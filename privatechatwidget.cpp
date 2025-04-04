@@ -170,15 +170,29 @@ QString PrivateChatWidget::formatTimestamp(const QDateTime &timestamp)
     }
 }
 
-void PrivateChatWidget::addSystemMessage(const QString &message)
+void PrivateChatWidget::addSystemMessage(QDateTime msgTimestamp)
 {
-    QString timestamp = formatTimestamp(QDateTime::currentDateTime());
-    chatHistoryDisplay->append(QString("<div style='text-align:center; margin: 8px 0;'>"
-                                       "<span style='color:#666666; font-size: 11px;'>%1</span><br>"
-                                       "<span style='color:#666666; font-size: 12px;'>%2</span>"
-                                       "</div>")
-                                   .arg(timestamp)
-                                   .arg(message));
+    QString html;
+    // Create a text cursor at the end of the document
+    QTextCursor cursor = chatHistoryDisplay->textCursor();
+    cursor.movePosition(QTextCursor::End);
+
+    // Create a block format with center alignment
+    QTextBlockFormat blockFormat;
+    blockFormat.setAlignment(Qt::AlignCenter);
+
+    // Apply the block format
+    cursor.insertBlock(blockFormat);
+
+    QString dateStr = msgTimestamp.toString("yyyy-MM-dd");
+
+    // Create the HTML for the system message
+    html = "<div style='display: inline-block; background-color: #333; "
+           "border-radius: 10px; padding: 3px 10px; margin: 2px 0;'>"
+           "<span style='color:#9e9e9e;'>" + QString("---") + dateStr + QString("---") +  "</span></div><br>";
+
+    cursor.insertHtml(html);
+
 }
 
 void PrivateChatWidget::addIncomingMessage(const QString &sender, const QString &email, const QString &message, const QDateTime &timestamp)
@@ -230,7 +244,7 @@ void PrivateChatWidget::sendMessage()
             addOutgoingMessage(message, QDateTime::currentDateTime());
             messageInputField->clear();
         } else {
-            addSystemMessage("Failed to send message. Please try again.");
+            QMessageBox::warning(this, "Error", "Failed to send message. Please try again.");
         }
     }
 }
@@ -244,6 +258,7 @@ void PrivateChatWidget::loadChatHistory()
     QList<std::tuple<QString, QString, QString, QDateTime>> messages =
         dbHandler.getDirectMessageHistory(userEmail, recipientEmail, 50);
 
+    QString lastDate;
     // Display messages in UI
     for (const auto &message : messages) {
         const QString &senderName = std::get<0>(message);
@@ -251,12 +266,26 @@ void PrivateChatWidget::loadChatHistory()
         const QString &content = std::get<2>(message);
         const QDateTime &timestamp = std::get<3>(message);
 
+        // Add date separator if it's a new day
+        QString dateStr = timestamp.toString("yyyy-MM-dd");
+        if (lastDate != dateStr) {
+            addSystemMessage(timestamp);
+
+            lastDate = dateStr;
+        }
+
+
         if (senderEmail == userEmail) {
             addOutgoingMessage(content, timestamp);
         } else {
             addIncomingMessage(senderName, senderEmail, content, timestamp);
         }
     }
+
+    if (messages.isEmpty()) {
+        chatHistoryDisplay->append("<center><span style='color:#777777;'>--- No messages yet ---</span></center>");
+    }
+
 
     // Scroll to bottom to show latest messages
     scrollToBottom();

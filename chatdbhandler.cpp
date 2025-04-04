@@ -171,12 +171,12 @@ int ChatDatabaseHandler::createGroupChat(const QString &name, const QString &cre
 
 
     // Check if group already exists
-    QSqlQuery checkQuery(db);
-    checkQuery.prepare("SELECT id FROM chat_groups WHERE name = :name");
-    checkQuery.bindValue(":name", name);
-    if (checkQuery.exec() && checkQuery.next()) {
-        return checkQuery.value(0).toInt(); // Return existing group ID
-    }
+    // QSqlQuery checkQuery(db);
+    // checkQuery.prepare("SELECT id FROM chat_groups WHERE name = :name");
+    // checkQuery.bindValue(":name", name);
+    // if (checkQuery.exec() && checkQuery.next()) {
+    //     return checkQuery.value(0).toInt(); // Return existing group ID
+    // }
 
     // Create new group
     QSqlQuery insertQuery(db);

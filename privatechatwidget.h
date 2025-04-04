@@ -11,6 +11,7 @@
 #include <QTimer>
 #include <QScrollBar>
 #include <QDateTime>
+#include <QMessageBox>
 #include <tuple>
 #include "chatdbhandler.h"
 
@@ -23,7 +24,7 @@ public:
     ~PrivateChatWidget() = default;
 
     void clearChatHistory();
-    void addSystemMessage(const QString &message);
+    void addSystemMessage(QDateTime msgTimestamp);
     void addIncomingMessage(const QString &sender, const QString &email, const QString &message, const QDateTime &timestamp = QDateTime::currentDateTime());
     void addOutgoingMessage(const QString &message, const QDateTime &timestamp = QDateTime::currentDateTime());
     void loadChatHistory();
